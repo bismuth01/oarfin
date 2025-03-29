@@ -18,6 +18,7 @@
   },
   "homepage": "https://github.com/bismuth01/oarfin#readme",
   "dependencies": {
+    "@google/genai": "^0.7.0",
     "axios": "^1.8.4",
     "dotenv": "^16.4.7",
     "express": "^4.21.2"
