@@ -79,7 +79,6 @@ const DisasterMap = () => {
     fetchDisasters();
   }, [API_BASE_URL]);
 
-  if (loading) return <div>Loading disaster data...</div>;
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
@@ -93,7 +92,7 @@ const DisasterMap = () => {
         center={[20, 0]} 
         zoom={2} 
         minZoom={1.5} 
-        style={{ height: "50vh", width: "100%" }} 
+        style={{ height: "60vh", width: "100%" }} 
         className="rounded-md"
       >
         <LayersControl position="topright">

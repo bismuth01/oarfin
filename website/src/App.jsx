@@ -8,13 +8,9 @@ function App() {
     <div className="min-h-screen bg-gray-100">
       {/* Add the news banner at the top */}
       <DisasterNewsBanner />
-      
-      <div className="container mx-auto p-4">
-        <h1 className="text-3xl font-bold mb-6">Global Disaster Alerts</h1>
-        
+      <div className="container height 100vh width 100vh mx-auto p-4">
         {/* Your existing map component */}
         <DisasterMap />
-        
         {/* Other components... */}
       </div>
     </div>
