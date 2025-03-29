@@ -12,7 +12,7 @@ const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 
 app.use(express.json());
 
-app.get("/", (req, res) => {
+app.get("/status", (req, res) => {
   res.status(200).send("LLM API is running");
 });
 
