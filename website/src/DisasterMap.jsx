@@ -13,6 +13,7 @@ import {
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import DisasterFilter from "./DisasterFilter";
+import SafeSpotMarker from "./SafeSpotMarker";
 import './global.css';
 
 // Base API URL
@@ -43,10 +44,10 @@ const getIcon = (eventType) => {
 };
 
 // Component to handle map clicks for safe spots
-function SpotMarker({ onAddSafeSpot }) {
+function SpotMarker({ onMapClick }) {
   useMapEvents({
     click(e) {
-      onAddSafeSpot(e.latlng);
+      onMapClick(e.latlng);
     }
   });
   return null;
@@ -59,6 +60,7 @@ const DisasterMap = () => {
   });
   const [loading, setLoading] = useState(true);
   const [safeSpots, setSafeSpots] = useState([]);
+  const [clickPosition, setClickPosition] = useState(null);
 
   // Add a new safe spot
   const handleAddSafeSpot = (position) => {
@@ -66,8 +68,11 @@ const DisasterMap = () => {
       ...prev,
       {
         id: Date.now(),
-        position,
-        name: `Safe Spot ${prev.length + 1}`
+        position: {
+          lat: position.lat,
+          lng: position.lng
+        },
+        name: position.name || `Safe Spot ${prev.length + 1}`
       }
     ]);
   };
@@ -80,6 +85,24 @@ const DisasterMap = () => {
   // Clear all safe spots
   const handleClearSafeSpots = () => {
     setSafeSpots([]);
+  };
+
+  // Handle map click
+  const handleMapClick = (latlng) => {
+    setClickPosition(latlng);
+  };
+
+  // Send data to backend
+  const handleSendToBackend = async (data) => {
+    try {
+      console.log("Sending data to backend:", data);
+      // Replace with your actual API endpoint
+      // const response = await axios.post('YOUR_BACKEND_ENDPOINT', data);
+      alert(`Data prepared for backend:\n${JSON.stringify(data, null, 2)}`);
+    } catch (error) {
+      console.error("Error sending data to backend:", error);
+      alert("Error sending data to backend");
+    }
   };
 
   // Calculate disaster counts by type
@@ -132,56 +155,16 @@ const DisasterMap = () => {
   if (loading) return <div>Loading disaster data...</div>;
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100vh' }}>
-      {/* Top control panel */}
-      <div style={{
-        display: 'flex',
-        gap: '10px',
-        padding: '10px',
-        backgroundColor: '#f5f5f5',
-        borderBottom: '1px solid #ddd'
-      }}>
-        <DisasterFilter 
-          filters={filters}
-          setFilters={setFilters}
-          disasterCounts={disasterCounts}
-        />
-        <div style={{
-          backgroundColor: 'white',
-          padding: '10px',
-          borderRadius: '4px',
-          boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
-        }}>
-          <h3 style={{ margin: '0 0 10px 0', fontSize: '0.9rem' }}>Safe Spots</h3>
-          <div style={{ marginBottom: '10px', fontSize: '0.8rem' }}>
-            <p>Click on map to add safe spots</p>
-            <p>Total: {safeSpots.length}</p>
-          </div>
-          <button 
-            onClick={handleClearSafeSpots}
-            style={{
-              padding: '3px 6px',
-              fontSize: '0.8rem',
-              background: '#f44336',
-              color: 'white',
-              border: 'none',
-              borderRadius: '3px'
-            }}
-          >
-            Clear All Spots
-          </button>
-        </div>
-      </div>
-
-      {/* Map area */}
-      <div style={{ flex: 1 }}>
+    <div style={{ display: 'flex', height: '100vh' }}>
+      {/* Left panel - Map */}
+      <div style={{ flex: 3 }}>
         <MapContainer 
           center={[20, 0]} 
           zoom={2} 
           style={{ height: '100%', width: '100%' }}
           className="rounded-md"
         >
-          <SpotMarker onAddSafeSpot={handleAddSafeSpot} />
+          <SpotMarker onMapClick={handleMapClick} />
           
           <LayersControl position="topright">
             <LayersControl.BaseLayer checked name="Satellite">
@@ -203,7 +186,7 @@ const DisasterMap = () => {
           {safeSpots.map(spot => (
             <Marker
               key={spot.id}
-              position={spot.position}
+              position={[spot.position.lat, spot.position.lng]}
               icon={safeSpotIcon}
               eventHandlers={{
                 click: () => handleRemoveSafeSpot(spot.id)
@@ -260,6 +243,25 @@ const DisasterMap = () => {
             );
           })}
         </MapContainer>
+      </div>
+
+      {/* Right panel - Controls */}
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', padding: '10px', backgroundColor: '#f5f5f5' }}>
+        <DisasterFilter 
+          filters={filters}
+          setFilters={setFilters}
+          disasterCounts={disasterCounts}
+        />
+        
+        <SafeSpotMarker 
+          safeSpots={safeSpots}
+          disasterMarkers={filteredDisasters}
+          onAddSafeSpot={handleAddSafeSpot}
+          onRemoveSafeSpot={handleRemoveSafeSpot}
+          onClearSafeSpots={handleClearSafeSpots}
+          onSendToBackend={handleSendToBackend}
+          onClickPosition={clickPosition}
+        />
       </div>
     </div>
   );
