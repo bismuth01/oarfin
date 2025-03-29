@@ -1,6 +1,15 @@
 import { useEffect, useState } from "react";
 import axios from "axios";
-import { MapContainer, TileLayer, Marker, Popup, Circle, Rectangle, LayersControl } from "react-leaflet";
+import { 
+  MapContainer, 
+  TileLayer, 
+  Marker, 
+  Popup, 
+  Circle, 
+  Rectangle, 
+  LayersControl,
+  useMapEvents 
+} from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import DisasterFilter from "./DisasterFilter";
@@ -10,6 +19,15 @@ import './global.css';
 const API_BASE_URL = import.meta.env.VITE_API_Marker; 
 // Disaster types
 const DISASTER_TYPES = ["EQ", "FL", "TC", "VO", "DR", "WF"];
+
+// Safe spot icon
+const safeSpotIcon = new L.Icon({
+  iconUrl: 'https://cdn-icons-png.flaticon.com/512/2776/2776067.png',
+  iconSize: [25, 41],
+  iconAnchor: [12, 41],
+  popupAnchor: [1, -34],
+  shadowSize: [41, 41]
+});
 
 // Define different icons for each disaster type
 const getIcon = (eventType) => {
@@ -24,12 +42,45 @@ const getIcon = (eventType) => {
   return iconMap[eventType] || "https://cdn-icons-png.flaticon.com/512/184/184525.png"; // Default icon
 };
 
+// Component to handle map clicks for safe spots
+function SpotMarker({ onAddSafeSpot }) {
+  useMapEvents({
+    click(e) {
+      onAddSafeSpot(e.latlng);
+    }
+  });
+  return null;
+}
+
 const DisasterMap = () => {
   const [disasters, setDisasters] = useState([]);
   const [filters, setFilters] = useState({
     EQ: true, FL: true, TC: true, VO: true, DR: true, WF: true
   });
   const [loading, setLoading] = useState(true);
+  const [safeSpots, setSafeSpots] = useState([]);
+
+  // Add a new safe spot
+  const handleAddSafeSpot = (position) => {
+    setSafeSpots(prev => [
+      ...prev,
+      {
+        id: Date.now(),
+        position,
+        name: `Safe Spot ${prev.length + 1}`
+      }
+    ]);
+  };
+
+  // Remove a safe spot
+  const handleRemoveSafeSpot = (id) => {
+    setSafeSpots(prev => prev.filter(spot => spot.id !== id));
+  };
+
+  // Clear all safe spots
+  const handleClearSafeSpots = () => {
+    setSafeSpots([]);
+  };
 
   // Calculate disaster counts by type
   const disasterCounts = disasters.reduce((counts, disaster) => {
@@ -54,7 +105,6 @@ const DisasterMap = () => {
 
         for (const type of DISASTER_TYPES) {
           try {
-            // Use the environment variable in your API call
             const response = await axios.get(`${API_BASE_URL}${type}`);
             const events = response.data?.features?.filter(event => {
               const coords = event.geometry?.coordinates;
@@ -79,80 +129,138 @@ const DisasterMap = () => {
     fetchDisasters();
   }, [API_BASE_URL]);
 
+  if (loading) return <div>Loading disaster data...</div>;
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-      <DisasterFilter 
-        filters={filters}
-        setFilters={setFilters}
-        disasterCounts={disasterCounts}
-      />
-      
-      <MapContainer 
-        center={[20, 0]} 
-        zoom={2} 
-        minZoom={1.5} 
-        style={{ height: "60vh", width: "100%" }} 
-        className="rounded-md"
-      >
-        <LayersControl position="topright">
-          <LayersControl.BaseLayer checked name="Satellite">
-            <TileLayer
-              url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
-              attribution='Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community'
-            />
-          </LayersControl.BaseLayer>
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100vh' }}>
+      {/* Top control panel */}
+      <div style={{
+        display: 'flex',
+        gap: '10px',
+        padding: '10px',
+        backgroundColor: '#f5f5f5',
+        borderBottom: '1px solid #ddd'
+      }}>
+        <DisasterFilter 
+          filters={filters}
+          setFilters={setFilters}
+          disasterCounts={disasterCounts}
+        />
+        <div style={{
+          backgroundColor: 'white',
+          padding: '10px',
+          borderRadius: '4px',
+          boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
+        }}>
+          <h3 style={{ margin: '0 0 10px 0', fontSize: '0.9rem' }}>Safe Spots</h3>
+          <div style={{ marginBottom: '10px', fontSize: '0.8rem' }}>
+            <p>Click on map to add safe spots</p>
+            <p>Total: {safeSpots.length}</p>
+          </div>
+          <button 
+            onClick={handleClearSafeSpots}
+            style={{
+              padding: '3px 6px',
+              fontSize: '0.8rem',
+              background: '#f44336',
+              color: 'white',
+              border: 'none',
+              borderRadius: '3px'
+            }}
+          >
+            Clear All Spots
+          </button>
+        </div>
+      </div>
+
+      {/* Map area */}
+      <div style={{ flex: 1 }}>
+        <MapContainer 
+          center={[20, 0]} 
+          zoom={2} 
+          style={{ height: '100%', width: '100%' }}
+          className="rounded-md"
+        >
+          <SpotMarker onAddSafeSpot={handleAddSafeSpot} />
           
-          <LayersControl.BaseLayer name="Street Map">
-            <TileLayer
-              url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-              attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-            />
-          </LayersControl.BaseLayer>
-        </LayersControl>
+          <LayersControl position="topright">
+            <LayersControl.BaseLayer checked name="Satellite">
+              <TileLayer
+                url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
+                attribution='Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community'
+              />
+            </LayersControl.BaseLayer>
+            
+            <LayersControl.BaseLayer name="Street Map">
+              <TileLayer
+                url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+              />
+            </LayersControl.BaseLayer>
+          </LayersControl>
 
-        {filteredDisasters.map((event, index) => {
-          const coords = event.geometry?.coordinates;
-          const bbox = event.bbox || [];
-          const eventType = event.properties?.eventtype || "Unknown";
-          const description = event.properties?.htmldescription || 
-                            event.properties?.title || 
-                            event.properties?.description || 
-                            "Unknown Event";
-          const alertLevel = event.properties?.alertlevel || "N/A";
+          {/* Render safe spots */}
+          {safeSpots.map(spot => (
+            <Marker
+              key={spot.id}
+              position={spot.position}
+              icon={safeSpotIcon}
+              eventHandlers={{
+                click: () => handleRemoveSafeSpot(spot.id)
+              }}
+            >
+              <Popup>
+                <strong>{spot.name}</strong><br />
+                Latitude: {spot.position.lat.toFixed(4)}<br />
+                Longitude: {spot.position.lng.toFixed(4)}
+              </Popup>
+            </Marker>
+          ))}
 
-          const event_icon = L.icon({
-            iconUrl: event.properties?.icon || getIcon(eventType),
-            iconSize: [22, 22],
-            iconAnchor: [11, 22],
-          });
+          {/* Render disaster markers */}
+          {filteredDisasters.map((event, index) => {
+            const coords = event.geometry?.coordinates;
+            const bbox = event.bbox || [];
+            const eventType = event.properties?.eventtype || "Unknown";
+            const description = event.properties?.htmldescription || 
+                              event.properties?.title || 
+                              event.properties?.description || 
+                              "Unknown Event";
+            const alertLevel = event.properties?.alertlevel || "N/A";
 
-          const markerPosition = [coords[1], coords[0]];
+            const event_icon = L.icon({
+              iconUrl: event.properties?.icon || getIcon(eventType),
+              iconSize: [22, 22],
+              iconAnchor: [11, 22],
+            });
 
-          let affectedArea = null;
-          if (bbox.length === 4) {
-            const [minLon, minLat, maxLon, maxLat] = bbox;
-            if (minLon !== maxLon || minLat !== maxLat) {
-              affectedArea = <Rectangle bounds={[[minLat, minLon], [maxLat, maxLon]]} pathOptions={{ color: "red", weight: 2 }} />;
-            } else {
-              affectedArea = <Circle center={markerPosition} radius={50000} pathOptions={{ color: "red", weight: 2 }} />;
+            const markerPosition = [coords[1], coords[0]];
+
+            let affectedArea = null;
+            if (bbox.length === 4) {
+              const [minLon, minLat, maxLon, maxLat] = bbox;
+              if (minLon !== maxLon || minLat !== maxLat) {
+                affectedArea = <Rectangle bounds={[[minLat, minLon], [maxLat, maxLon]]} pathOptions={{ color: "red", weight: 2 }} />;
+              } else {
+                affectedArea = <Circle center={markerPosition} radius={50000} pathOptions={{ color: "red", weight: 2 }} />;
+              }
             }
-          }
 
-          return (
-            <div key={index}>
-              <Marker position={markerPosition} icon={event_icon}>
-                <Popup>
-                  <strong>{description}</strong>
-                  <p>Type: {eventType}</p>
-                  <p>Alert Level: {alertLevel}</p>
-                </Popup>
-              </Marker>
-              {affectedArea}
-            </div>
-          );
-        })}
-      </MapContainer>
+            return (
+              <div key={index}>
+                <Marker position={markerPosition} icon={event_icon}>
+                  <Popup>
+                    <strong>{description}</strong>
+                    <p>Type: {eventType}</p>
+                    <p>Alert Level: {alertLevel}</p>
+                  </Popup>
+                </Marker>
+                {affectedArea}
+              </div>
+            );
+          })}
+        </MapContainer>
+      </div>
     </div>
   );
 };

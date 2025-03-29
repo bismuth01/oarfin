@@ -1,118 +1,126 @@
-import { useEffect, useState } from "react";
-import axios from "axios";
-import { MapContainer, TileLayer, Marker, Popup, Circle, Rectangle, LayersControl, useMapEvents } from "react-leaflet";
-import L from "leaflet";
-import "leaflet/dist/leaflet.css";
-import DisasterFilter from "./DisasterFilter";
-import SafeSpotMarker from "./SafeSpotMarker";
+import React from 'react';
 import './global.css';
 
-// ... (keep your constants and getIcon function the same)
-
-// Create a component to handle map clicks
-function SpotMarker({ onSpotMarked }) {
-  useMapEvents({
-    click(e) {
-      onSpotMarked(e.latlng);
-    }
-  });
-  return null;
-}
-
-const DisasterMap = () => {
-  // ... (keep your existing state and effects the same)
-
-  const [safeSpots, setSafeSpots] = useState([]);
-
-  const handleSpotMarked = (position, clearAll = false) => {
-    if (clearAll) {
-      setSafeSpots([]);
-    } else if (position) {
-      setSafeSpots(prev => [
-        ...prev,
-        {
-          id: Date.now(),
-          position,
-          name: `Safe Spot ${prev.length + 1}`
-        }
-      ]);
-    }
-  };
-
-  // ... (keep your loading and filter logic the same)
-
+const SafeSpotMarker = ({ 
+  safeSpots, 
+  onAddSafeSpot, 
+  onRemoveSafeSpot, 
+  onClearSafeSpots 
+}) => {
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100vh' }}>
-      {/* Top control panel */}
-      <div style={{
-        display: 'flex',
-        gap: '10px',
-        padding: '10px',
-        backgroundColor: '#f5f5f5',
-        borderBottom: '1px solid #ddd'
+    <div className="safe-spot-controls" style={{
+      backgroundColor: 'white',
+      padding: '0.75rem',
+      borderRadius: '4px',
+      boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
+      flex: 1
+    }}>
+      <h3 style={{ 
+        margin: '0 0 0.5rem 0',
+        fontSize: '0.95rem',
+        color: '#2c3e50'
       }}>
-        <DisasterFilter 
-          filters={filters}
-          setFilters={setFilters}
-          disasterCounts={disasterCounts}
-        />
-        <SafeSpotMarker onSpotMarked={handleSpotMarked} />
+        Safe Spots Manager
+      </h3>
+      
+      <div style={{ 
+        marginBottom: '0.75rem',
+        fontSize: '0.85rem',
+        color: '#34495e'
+      }}>
+        <p style={{ margin: '0 0 0.25rem 0' }}>
+          <strong>Total Marked:</strong> {safeSpots.length}
+        </p>
+        <p style={{ margin: 0 }}>
+          Click map to add, click markers to remove
+        </p>
       </div>
 
-      {/* Map area */}
-      <div style={{ flex: 1 }}>
-        <MapContainer 
-          center={[20, 0]} 
-          zoom={2} 
-          style={{ height: '100%', width: '100%' }}
-          className="rounded-md"
+      <div style={{ display: 'flex', gap: '0.5rem' }}>
+        <button
+          onClick={() => onAddSafeSpot({ lat: 20, lng: 0 })}
+          style={{
+            padding: '0.35rem 0.7rem',
+            fontSize: '0.8rem',
+            backgroundColor: '#27ae60',
+            color: 'white',
+            border: 'none',
+            borderRadius: '3px',
+            cursor: 'pointer',
+            flex: 1
+          }}
         >
-          {/* Add the spot marker handler */}
-          <SpotMarker onSpotMarked={handleSpotMarked} />
-
-          {/* Base layers */}
-          <LayersControl position="topright">
-            <LayersControl.BaseLayer checked name="Satellite">
-              <TileLayer
-                url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
-                attribution='Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community'
-              />
-            </LayersControl.BaseLayer>
-            <LayersControl.BaseLayer name="Street Map">
-              <TileLayer
-                url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-              />
-            </LayersControl.BaseLayer>
-          </LayersControl>
-
-          {/* Render safe spots */}
-          {safeSpots.map(spot => (
-            <Marker
-              key={spot.id}
-              position={spot.position}
-              icon={new L.Icon({
-                iconUrl: 'https://cdn-icons-png.flaticon.com/512/2776/2776067.png',
-                iconSize: [25, 41],
-                iconAnchor: [12, 41]
-              })}
-            >
-              <Popup>
-                <strong>{spot.name}</strong><br />
-                Lat: {spot.position.lat.toFixed(4)}<br />
-                Lng: {spot.position.lng.toFixed(4)}
-              </Popup>
-            </Marker>
-          ))}
-
-          {/* Render disaster markers (keep your existing code) */}
-          {filteredDisasters.map((event, index) => {
-            // ... (keep your existing disaster marker code)
-          })}
-        </MapContainer>
+          Add Sample Spot
+        </button>
+        
+        <button
+          onClick={onClearSafeSpots}
+          style={{
+            padding: '0.35rem 0.7rem',
+            fontSize: '0.8rem',
+            backgroundColor: '#e74c3c',
+            color: 'white',
+            border: 'none',
+            borderRadius: '3px',
+            cursor: 'pointer',
+            flex: 1
+          }}
+        >
+          Clear All
+        </button>
       </div>
+
+      {safeSpots.length > 0 && (
+        <div style={{ 
+          marginTop: '0.75rem',
+          maxHeight: '120px',
+          overflowY: 'auto',
+          borderTop: '1px solid #ecf0f1',
+          paddingTop: '0.5rem'
+        }}>
+          <h4 style={{ 
+            fontSize: '0.85rem',
+            margin: '0 0 0.5rem 0',
+            color: '#7f8c8d'
+          }}>
+            Saved Spots:
+          </h4>
+          <ul style={{
+            listStyle: 'none',
+            padding: 0,
+            margin: 0,
+            fontSize: '0.8rem'
+          }}>
+            {safeSpots.map(spot => (
+              <li 
+                key={spot.id}
+                style={{
+                  padding: '0.25rem 0',
+                  borderBottom: '1px solid #ecf0f1',
+                  display: 'flex',
+                  justifyContent: 'space-between'
+                }}
+              >
+                <span>{spot.name}</span>
+                <button
+                  onClick={() => onRemoveSafeSpot(spot.id)}
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    color: '#e74c3c',
+                    cursor: 'pointer',
+                    fontSize: '0.75rem'
+                  }}
+                >
+                  Remove
+                </button>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
     </div>
   );
 };
 
-export default DisasterMap;
+export default SafeSpotMarker;
