@@ -1,0 +1,55 @@
+name: disaster_alert
+description: A disaster alert app with friend location sharing.
+
+publish_to: 'none'
+
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.0.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  
+  # Firebase packages
+  firebase_core: ^2.32.0
+  firebase_auth: ^4.16.0
+  cloud_firestore: ^4.17.5
+  
+  # Authentication
+  google_sign_in: ^6.1.0
+  
+  # State management
+  provider: ^6.1.1
+  
+  # Location services
+  geolocator: ^10.1.0
+  
+  # Maps
+  flutter_map: ^6.2.0
+  latlong2: ^0.9.0
+  
+  # Networking & storage
+  http: ^1.1.0
+  shared_preferences: ^2.2.2
+  
+  # Environment variables
+  flutter_dotenv: ^5.1.0
+  
+  # Battery info
+  battery_plus: ^4.1.0
+  
+  # Other utilities
+  cupertino_icons: ^1.0.6
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^3.0.0
+
+flutter:
+  uses-material-design: true
+  
+  assets:
+    - .env
