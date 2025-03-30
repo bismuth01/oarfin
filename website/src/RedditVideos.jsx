@@ -12,7 +12,7 @@ const RedditVideos = () => {
       try {
         setLoading(true);
         const response = await axios.get(
-          `${import.meta.env.VITE_WebData_URL}:5123/reddit_news`
+          `${import.meta.env.VITE_WebData_URL}/reddit_news`
         );
         
         // Filter to only include video posts (type === 'video')

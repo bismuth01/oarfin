@@ -12,8 +12,8 @@ const NewsArticles = () => {
       try {
         setLoading(true);
         const [bbcResponse, ndtvResponse] = await Promise.all([
-          axios.get(`${import.meta.env.VITE_WebData_URL}:5123/bbc_news`),
-          axios.get(`${import.meta.env.VITE_WebData_URL}:5123/ndtv_news`)
+          axios.get(`${import.meta.env.VITE_WebData_URL}/bbc_news`),
+          axios.get(`${import.meta.env.VITE_WebData_URL}/ndtv_news`)
         ]);
         
         // Combine and format articles from both sources

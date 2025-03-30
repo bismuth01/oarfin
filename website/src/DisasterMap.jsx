@@ -119,7 +119,7 @@ const DisasterMap = () => {
       //   { disasters: formattedData }
       // );
       
-      alert(`Disaster data prepared for backend:\n${JSON.stringify(formattedData, null, 2)}`);
+      console.log(`Disaster data prepared for backend:\n${JSON.stringify(formattedData, null, 2)}`);
       console.log("Data would be sent to:", `${import.meta.env.VITE_Server_URL}/set_disaster_locations`);
       
       // if (response.status === 200) {
@@ -136,7 +136,7 @@ const DisasterMap = () => {
     try {
       console.log("Sending data to backend:", data);
      // const response = await axios.post(`${VITE_Server_URL}${VITE_Backend_Endpoint}`, data);
-      alert(`Data prepared for backend:\n${JSON.stringify(data, null, 2)}`);
+      console.log(`Data prepared for backend:\n${JSON.stringify(data, null, 2)}`);
     } catch (error) {
       console.error("Error sending data to backend:", error);
       alert("Error sending data to backend");
