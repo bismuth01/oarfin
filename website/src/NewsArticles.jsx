@@ -38,8 +38,8 @@ const NewsArticles = () => {
       if (!apiUrl) throw new Error('API base URL not configured');
 
       const [bbcResponse, ndtvResponse] = await Promise.all([
-        axios.get(`${apiUrl}/bbc_news`, { timeout: 8000 }),
-        axios.get(`${apiUrl}/ndtv_news`, { timeout: 8000 })
+        axios.get(`${apiUrl}/bbc_news`),
+        axios.get(`${apiUrl}/ndtv_news`)
       ]);
 
       const validateArticle = (article) => ({
