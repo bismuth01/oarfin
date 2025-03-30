@@ -55,6 +55,12 @@ app.get("/status", (req, res) => {
 app.get("/bbc_news", async (req, res) => {
   const browser: Browser = await chromium.launch({
     headless: true,
+    args: [
+      "--disable-dev-shm-usage",
+      "--no-sandbox",
+      "--disable-setuid-sandbox",
+      "--disable-gpu",
+    ],
   });
 
   const page: Page = await browser.newPage();
@@ -123,6 +129,12 @@ app.get("/bbc_news", async (req, res) => {
 app.get("/ndtv_news", async (req, res) => {
   const browser: Browser = await chromium.launch({
     headless: true,
+    args: [
+      "--disable-dev-shm-usage",
+      "--no-sandbox",
+      "--disable-setuid-sandbox",
+      "--disable-gpu",
+    ],
   });
 
   const page: Page = await browser.newPage();
