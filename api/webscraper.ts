@@ -1,6 +1,7 @@
 import express from "express";
 import dotenv from "dotenv";
 import axios from "axios";
+import cors from "cors";
 import { chromium, Browser, Page } from "playwright";
 
 dotenv.config();
@@ -8,6 +9,14 @@ dotenv.config();
 const app = express();
 const PORT = process.env.WEBSCRAPER_PORT;
 const LLM_URL = `${process.env.LLM_URL}:${process.env.LLM_PORT}${process.env.LLM_ENDPOINT}`;
+
+const corsOptions = {
+  origin: process.env.FRONTEND_URL,
+  methods: ["GET"],
+  optionsSuccessStatus: 200,
+};
+
+app.use(cors(corsOptions));
 app.use(express.json());
 
 interface ArticleContent {
@@ -23,10 +32,18 @@ async function is_disaster_news({
   title,
   content,
 }: ArticleContent): Promise<string> {
-  const response = await axios.post(LLM_URL, {
-    title: title,
-    content: content,
-  });
+  const response = await axios.post(
+    LLM_URL,
+    {
+      title: title,
+      content: content,
+    },
+    {
+      headers: {
+        Origin: `${process.env.WEBSCRAPPER_URL}:${process.env.WEBSCRAPER_PORT}`,
+      },
+    },
+  );
 
   return response.data.answer;
 }
