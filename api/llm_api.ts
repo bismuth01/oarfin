@@ -16,28 +16,32 @@ app.get("/status", (req, res) => {
   res.status(200).send("LLM API is running");
 });
 
-app.post("/disaster_news", async (req, res) => {
-  console.log(req.body.news);
+app.post("/is_disaster_news", async (req, res) => {
+  console.log(req.body);
   try {
     const response = await ai.models.generateContent({
       model: "gemini-2.0-flash",
-      contents: `${req.body.news}\nThis is the details of a news article. ONLY ANSWER IN YES OR NO. If the news article is based on a natural disaster answer YES else NO`,
+      contents: `Title: ${req.body.title}\n Content: ${req.body.news}\nThis is the details of a news article. ONLY ANSWER IN YES OR NO. If the news article is based on a natural disaster answer YES else NO`,
     });
 
     let answer: string | undefined = response.text;
     console.log(answer);
 
     if (answer) {
-      if (answer?.length <= 3) {
-        res.status(200).json({ answer: answer });
+      answer = answer.trim().toUpperCase();
+      if (answer.includes("YES")) {
+        res.status(200).json({ answer: "YES" });
+      } else if (answer.includes("NO")) {
+        res.status(200).json({ answer: "NO" });
+      } else {
+        res.status(400).json({ error: "Invalid response format" });
       }
     } else {
-      res.status(500).send("LLM Response length error");
+      res.status(500).json({ error: "Empty LLM response" });
     }
   } catch (error) {
-    console.log("LLM response error");
-
-    res.status(500).send("LLM response error");
+    console.error("LLM response error:", error);
+    res.status(500).json({ error: "LLM processing error" });
   }
 });
 

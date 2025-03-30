@@ -7,10 +7,32 @@ dotenv.config();
 
 const app = express();
 const PORT = process.env.WEBSCRAPER_PORT;
+const LLM_URL = `${process.env.LLM_URL}:${process.env.LLM_PORT}${process.env.LLM_ENDPOINT}`;
 app.use(express.json());
 
+interface ArticleContent {
+  title: string;
+  content: string;
+}
+
+async function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+async function is_disaster_news({
+  title,
+  content,
+}: ArticleContent): Promise<string> {
+  const response = await axios.post(LLM_URL, {
+    title: title,
+    content: content,
+  });
+
+  return response.data.answer;
+}
+
 app.get("/status", (req, res) => {
-  res.status(200).send("Webscrapper Running");
+  res.status(200).send("Webscrapper API Running");
 });
 
 app.get("/bbc_news", async (req, res) => {
@@ -48,6 +70,7 @@ app.get("/bbc_news", async (req, res) => {
           );
 
           articles.push({
+            url: url,
             title: title,
             content: articleContent.join(" "),
           });
@@ -59,9 +82,22 @@ app.get("/bbc_news", async (req, res) => {
       }
     }
 
+    const filtered_article = [];
+    for (const article of articles) {
+      if (
+        (await is_disaster_news({
+          title: article.title,
+          content: article.content,
+        })) === "YES"
+      ) {
+        filtered_article.push(article);
+      }
+      await sleep(2000);
+    }
+
     await page.close();
     await browser.close();
-    res.status(200).json(articles);
+    res.status(200).json(filtered_article);
   } catch (error) {
     res.status(500).send(`Scraping internal error ${error}`);
   }
@@ -105,6 +141,7 @@ app.get("/ndtv_news", async (req, res) => {
           }
 
           articles.push({
+            url: url,
             title: title,
             content: articleContent.join(" "),
           });
@@ -116,9 +153,22 @@ app.get("/ndtv_news", async (req, res) => {
       }
     }
 
+    const filtered_article = [];
+    for (const article of articles) {
+      if (
+        (await is_disaster_news({
+          title: article.title,
+          content: article.content,
+        })) === "YES"
+      ) {
+        filtered_article.push(article);
+      }
+      await sleep(2000);
+    }
+
     await page.close();
     await browser.close();
-    res.status(200).json(articles);
+    res.status(200).json(filtered_article);
   } catch (error) {
     res.status(500).send(`Scraping internal error ${error}`);
   }
@@ -133,7 +183,7 @@ app.get("/reddit_news", async (req, res) => {
     const posts = [];
     for (const post of response.data.data.children) {
       const title = post.data.title;
-      const type = post.data.is_video === "true" ? "video" : "image";
+      const type = post.data.is_video === true ? "video" : "image";
       const post_link = post.data.url;
 
       posts.push({
