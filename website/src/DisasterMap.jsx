@@ -119,7 +119,7 @@ const DisasterMap = () => {
       //   { disasters: formattedData }
       // );
       
-      alert(`Disaster data prepared for backend:\n${JSON.stringify(formattedData, null, 2)}`);
+      console.log(`Disaster data prepared for backend:\n${JSON.stringify(formattedData, null, 2)}`);
       console.log("Data would be sent to:", `${import.meta.env.VITE_Server_URL}/set_disaster_locations`);
       
       // if (response.status === 200) {
