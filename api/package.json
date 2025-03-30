@@ -6,7 +6,9 @@
   "scripts": {
     "build": "tsc",
     "start": "node dist/llm_api.js & node dist/webscraper.js",
-    "dev": "nodemon --exec ts-node llm_api.ts & nodemon --exec ts-node webscraper.ts"
+    "dev": "nodemon --exec ts-node llm_api.ts & nodemon --exec ts-node webscraper.ts",
+    "start:llm": "node dist/llm_api.js",
+    "start:scraper": "node dist/webscraper.js"
   },
   "repository": {
     "type": "git",
