@@ -72,7 +72,8 @@ const DisasterMap = () => {
           lat: position.lat,
           lng: position.lng
         },
-        name: position.name || `Safe Spot ${prev.length + 1}`
+        name: position.name || `Safe Spot ${prev.length + 1}`,
+         eventid: position.eventid || `safespot-${Date.now()}`
       }
     ]);
   };
@@ -84,7 +85,7 @@ const DisasterMap = () => {
 
   // Clear all safe spots
   const handleClearSafeSpots = () => {
-    setSafeSpots([]);
+    setSafeSpots([]);kay 
   };
 
   // Handle map click
@@ -92,12 +93,49 @@ const DisasterMap = () => {
     setClickPosition(latlng);
   };
 
+  const sendDisasterDataToBackend = async (disasterData) => {
+    try {
+      if (!disasterData || disasterData.length === 0) {
+        console.log("No disaster data to send");
+        return;
+      }
+
+      const formattedData = disasterData.map(disaster => ({
+        eventid: disaster.id || disaster.properties?.id || Date.now().toString(),
+        latitude: disaster.geometry?.coordinates[1],
+        longitude: disaster.geometry?.coordinates[0],
+        type: disaster.properties?.eventtype || "Unknown",
+        description: disaster.properties?.htmldescription || 
+                   disaster.properties?.title || 
+                   disaster.properties?.description || 
+                   "Unknown Event"
+      }));
+
+      console.log("Sending disaster data to backend:", formattedData);
+      
+      // Uncomment when your backend is ready
+      // const response = await axios.post(
+      //   `${import.meta.env.VITE_Server_URL}/set_disaster_locations`,
+      //   { disasters: formattedData }
+      // );
+      
+      alert(`Disaster data prepared for backend:\n${JSON.stringify(formattedData, null, 2)}`);
+      console.log("Data would be sent to:", `${import.meta.env.VITE_Server_URL}/set_disaster_locations`);
+      
+      // if (response.status === 200) {
+      //   console.log("Disaster data successfully sent to backend");
+      // }
+    } catch (error) {
+      console.error("Error sending disaster data to backend:", error);
+      alert("Error sending disaster data to backend");
+    }
+  };
   // Send data to backend
+
   const handleSendToBackend = async (data) => {
     try {
       console.log("Sending data to backend:", data);
-      // Replace with your actual API endpoint
-      // const response = await axios.post('YOUR_BACKEND_ENDPOINT', data);
+     // const response = await axios.post(`${VITE_Server_URL}${VITE_Backend_Endpoint}`, data);
       alert(`Data prepared for backend:\n${JSON.stringify(data, null, 2)}`);
     } catch (error) {
       console.error("Error sending data to backend:", error);
@@ -140,8 +178,9 @@ const DisasterMap = () => {
             console.error(`Error fetching ${type} data:`, error);
           }
         }
-
+        
         setDisasters(allDisasters);
+        sendDisasterDataToBackend(allDisasters);
       } catch (error) {
         console.error('Error fetching disasters:', error);
       } finally {
@@ -164,7 +203,7 @@ const DisasterMap = () => {
           style={{ height: '100%', width: '100%' }}
           className="rounded-md"
         >
-          <SpotMarker onMapClick={handleMapClick} />
+          <SpotMarker onMapClick={handleMapClick}  />
           
           <LayersControl position="topright">
             <LayersControl.BaseLayer checked name="Satellite">
@@ -233,6 +272,7 @@ const DisasterMap = () => {
               <div key={index}>
                 <Marker position={markerPosition} icon={event_icon}>
                   <Popup>
+                  <p>Event ID: {event.properties?.eventid || "N/A"}</p>
                     <strong>{description}</strong>
                     <p>Type: {eventType}</p>
                     <p>Alert Level: {alertLevel}</p>
