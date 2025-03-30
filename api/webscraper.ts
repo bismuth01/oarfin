@@ -10,6 +10,13 @@ const app = express();
 const PORT = process.env.WEBSCRAPER_PORT;
 const LLM_URL = `${process.env.LLM_URL}:${process.env.LLM_PORT}${process.env.LLM_ENDPOINT}`;
 
+const USER_AGENT =
+  "Mozilla/5.0 (compatible; OarfinBot/1.0; +http://www.yourdomain.com)";
+const REDDIT_API_HEADERS = {
+  "User-Agent": USER_AGENT,
+  Accept: "application/json",
+};
+
 // const corsOptions = {
 //   origin: process.env.FRONTEND_URL,
 //   methods: ["GET"],
@@ -207,6 +214,10 @@ app.get("/reddit_news", async (req, res) => {
   try {
     const response = await axios.get(
       "https://www.reddit.com/r/DisasterUpdate.json",
+      {
+        headers: REDDIT_API_HEADERS,
+        timeout: 10000, // 10 seconds timeout
+      },
     );
 
     const posts = [];
