@@ -10,13 +10,13 @@ const app = express();
 const PORT = process.env.WEBSCRAPER_PORT;
 const LLM_URL = `${process.env.LLM_URL}:${process.env.LLM_PORT}${process.env.LLM_ENDPOINT}`;
 
-const corsOptions = {
-  origin: process.env.FRONTEND_URL,
-  methods: ["GET"],
-  optionsSuccessStatus: 200,
-};
+// const corsOptions = {
+//   origin: process.env.FRONTEND_URL,
+//   methods: ["GET"],
+//   optionsSuccessStatus: 200,
+// };
 
-app.use(cors(corsOptions));
+// app.use(cors(corsOptions));
 app.use(express.json());
 
 interface ArticleContent {
