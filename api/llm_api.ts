@@ -9,15 +9,15 @@ dotenv.config();
 const app = express();
 const PORT = process.env.LLM_PORT;
 
-const corsOptions = {
-  origin: `${process.env.WEBSCRAPER_URL}:${process.env.WEBSCRAPER_PORT}`,
-  methods: ["POST", "GET"],
-  optionsSuccessStatus: 200,
-};
+// const corsOptions = {
+//   origin: `${process.env.WEBSCRAPER_URL}:${process.env.WEBSCRAPER_PORT}`,
+//   methods: ["POST", "GET"],
+//   optionsSuccessStatus: 200,
+// };
 
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 
-app.use(cors(corsOptions));
+//app.use(cors(corsOptions));
 app.use(express.json());
 
 app.get("/status", (req, res) => {
