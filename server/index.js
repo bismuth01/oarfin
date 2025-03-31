@@ -312,7 +312,7 @@ app.post("/report-safelocation", (req, res) => {
 app.get("/get-alerts", (req, res) => {
     try {
         const userID = getUserIDFromToken(req);
-        const { latitude, longitude, radius } = req.query;
+        const { latitude, longitude, radius } = req.body;
         
         if (!latitude || !longitude || !radius) {
             return res.status(400).json({ error: 'Missing required parameters' });
