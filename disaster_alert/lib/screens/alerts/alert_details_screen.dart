@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
+import 'package:provider/provider.dart'; // Make sure to add this
 import '../../models/alert_model.dart';
 import '../../utils/theme.dart';
+import '../../services/tab_navigation_service.dart'; // Add this import
 
 class AlertDetailsScreen extends StatefulWidget {
   final AlertModel alert;
@@ -99,8 +101,6 @@ class _AlertDetailsScreenState extends State<AlertDetailsScreen> {
             ),
 
             // Alert map
-            // Alert map
-// Alert map
             SizedBox(
               height: 200,
               child: FlutterMap(
@@ -210,7 +210,24 @@ class _AlertDetailsScreenState extends State<AlertDetailsScreen> {
                     icon: Icons.directions,
                     label: 'Directions',
                     onPressed: () {
-                      // TODO: Open navigation to safe zone
+                      // Use the TabNavigationService to open the map with this alert
+                      final navigationService =
+                          Provider.of<TabNavigationService>(context,
+                              listen: false);
+
+                      // Focus on the alert and navigate to map tab
+                      navigationService.focusOnAlert(widget.alert);
+
+                      // Show confirmation
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('View on map for directions'),
+                          duration: Duration(seconds: 1),
+                        ),
+                      );
+
+                      // Close this screen to go back to main screen
+                      Navigator.of(context).pop();
                     },
                   ),
                   _buildActionButton(
@@ -218,6 +235,12 @@ class _AlertDetailsScreenState extends State<AlertDetailsScreen> {
                     label: 'Share',
                     onPressed: () {
                       // TODO: Share alert
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Share functionality coming soon'),
+                          duration: Duration(seconds: 1),
+                        ),
+                      );
                     },
                   ),
                   _buildActionButton(
@@ -225,6 +248,12 @@ class _AlertDetailsScreenState extends State<AlertDetailsScreen> {
                     label: 'Subscribe',
                     onPressed: () {
                       // TODO: Subscribe to updates
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Subscribe functionality coming soon'),
+                          duration: Duration(seconds: 1),
+                        ),
+                      );
                     },
                   ),
                 ],

@@ -4,10 +4,15 @@ import 'package:provider/provider.dart';
 import 'services/auth_service.dart';
 import 'services/location_service.dart';
 import 'services/alert_service.dart';
+import 'services/api_service.dart';
 import 'services/friend_service.dart';
 import 'app.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:flutter/foundation.dart';
+import 'services/mock_api_service.dart';
+import 'services/tab_navigation_service.dart';
 
+bool get useMockApi => false;
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
@@ -27,28 +32,57 @@ void main() async {
   runApp(
     MultiProvider(
       providers: [
-        // Auth service
+        // Auth service (no dependencies)
         ChangeNotifierProvider(create: (_) => AuthService()),
-
-        // Location service
-        ChangeNotifierProvider(create: (_) => LocationService()),
-
-        // Alert service - depends on location service
-        ChangeNotifierProxyProvider<LocationService, AlertService>(
-          create: (context) => AlertService(
-            Provider.of<LocationService>(context, listen: false),
-          ),
-          update: (context, locationService, previous) =>
-              previous ?? AlertService(locationService),
+        ChangeNotifierProvider(
+          create: (_) => TabNavigationService(),
         ),
+        // API service (no dependencies)
+        Provider(
+          create: (context) {
+            final authService =
+                Provider.of<AuthService>(context, listen: false);
+            print("Creating API service. Using mock: $useMockApi");
 
-        // Friend service - depends on auth service
-        ChangeNotifierProxyProvider<AuthService, FriendService>(
-          create: (context) => FriendService(
+            if (useMockApi) {
+              final mockService = MockApiService(authService: authService);
+              print("Created MockApiService: $mockService");
+              return mockService;
+            } else {
+              return ApiService(authService: authService);
+            }
+          },
+        ),
+        // LocationService depends on ApiService
+        ChangeNotifierProxyProvider2<ApiService, AuthService, LocationService>(
+          create: (context) => LocationService(
+            Provider.of<ApiService>(context, listen: false),
             Provider.of<AuthService>(context, listen: false),
           ),
-          update: (context, authService, previous) =>
-              previous ?? FriendService(authService),
+          update: (context, apiService, authService, previous) =>
+              previous ?? LocationService(apiService, authService),
+        ),
+        ChangeNotifierProxyProvider3<LocationService, ApiService, AuthService,
+            AlertService>(
+          create: (context) => AlertService(
+            Provider.of<LocationService>(context, listen: false),
+            Provider.of<ApiService>(context, listen: false),
+            Provider.of<AuthService>(context, listen: false),
+          ),
+          update:
+              (context, locationService, apiService, authService, previous) =>
+                  previous ??
+                  AlertService(locationService, apiService, authService),
+        ),
+
+        // FriendService depends on AuthService and ApiService
+        ChangeNotifierProxyProvider2<AuthService, ApiService, FriendService>(
+          create: (context) => FriendService(
+            Provider.of<AuthService>(context, listen: false),
+            Provider.of<ApiService>(context, listen: false),
+          ),
+          update: (context, authService, apiService, previous) =>
+              previous ?? FriendService(authService, apiService),
         ),
       ],
       child: const DisasterAlertApp(),

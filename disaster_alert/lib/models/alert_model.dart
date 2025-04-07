@@ -1,16 +1,73 @@
+import 'package:flutter/material.dart';
+import '../utils/theme.dart';
+
+class SafeLocationModel {
+  final String? id;
+  final String? eventID;
+  final double latitude;
+  final double longitude;
+  final String? type;
+  final String? description;
+
+  SafeLocationModel({
+    this.id,
+    this.eventID,
+    required this.latitude,
+    required this.longitude,
+    this.type,
+    this.description,
+  });
+
+  factory SafeLocationModel.fromJson(Map<String, dynamic> json) {
+    return SafeLocationModel(
+      id: json['id']?.toString(),
+      eventID: json['eventID']?.toString(),
+      latitude: double.tryParse(json['latitude']?.toString() ??
+              json['safelat']?.toString() ??
+              '0') ??
+          0.0,
+      longitude: double.tryParse(json['longitude']?.toString() ??
+              json['safelong']?.toString() ??
+              '0') ??
+          0.0,
+      type: json['type'] as String?,
+      description: json['description'] as String? ?? json['desc'] as String?,
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'eventID': eventID,
+      'latitude': latitude,
+      'longitude': longitude,
+      'type': type,
+      'description': description,
+    };
+  }
+
+  @override
+  String toString() {
+    return 'SafeLocationModel(id: $id, eventID: $eventID, '
+        'latitude: $latitude, longitude: $longitude, '
+        'type: $type, description: $description)';
+  }
+}
+
 class AlertModel {
   final String id;
   final String title;
   final String description;
-  final String severity; // Critical, Warning, Watch, Info
+  final String severity;
   final DateTime timestamp;
   final DateTime expiryTime;
   final double latitude;
   final double longitude;
-  final double radius; // in meters
-  final String source; // e.g., "NOAA", "USGS", etc.
-  final Map<String, dynamic>?
-  metadata; // Additional data specific to alert type
+  final double radius;
+  final String? source;
+  final Map<String, dynamic>? metadata;
+  final List<SafeLocationModel>? safeLocations;
+  final String? eventID;
 
   AlertModel({
     required this.id,
@@ -22,28 +79,59 @@ class AlertModel {
     required this.latitude,
     required this.longitude,
     required this.radius,
-    required this.source,
+    this.source,
     this.metadata,
+    this.safeLocations,
+    this.eventID,
   });
 
-  // Create from JSON (for API responses)
+  // Returns true if the alert is still active (not expired)
+  bool get isActive => DateTime.now().isBefore(expiryTime);
+
+  // Returns color value based on severity
+  int getColorValue() {
+    switch (severity.toLowerCase()) {
+      case 'critical':
+        return AppColors.criticalAlert.value;
+      case 'warning':
+        return AppColors.warningAlert.value;
+      case 'watch':
+        return AppColors.watchAlert.value;
+      case 'info':
+        return AppColors.infoAlert.value;
+      default:
+        return Colors.grey.value;
+    }
+  }
+
   factory AlertModel.fromJson(Map<String, dynamic> json) {
+    List<SafeLocationModel>? safeLocations;
+
+    // Check if safeLocations is included in the JSON
+    if (json['safeLocations'] != null) {
+      safeLocations = (json['safeLocations'] as List)
+          .map((item) =>
+              SafeLocationModel.fromJson(item as Map<String, dynamic>))
+          .toList();
+    }
+
     return AlertModel(
       id: json['id'] as String,
       title: json['title'] as String,
-      description: json['description'] as String,
+      description: json['description'] as String? ?? '',
       severity: json['severity'] as String,
       timestamp: DateTime.parse(json['timestamp'] as String),
       expiryTime: DateTime.parse(json['expiryTime'] as String),
-      latitude: json['latitude'] as double,
-      longitude: json['longitude'] as double,
-      radius: json['radius'] as double,
-      source: json['source'] as String,
+      latitude: double.parse(json['latitude'].toString()),
+      longitude: double.parse(json['longitude'].toString()),
+      radius: double.parse(json['radius'].toString()),
+      source: json['source'] as String?,
       metadata: json['metadata'] as Map<String, dynamic>?,
+      safeLocations: safeLocations,
+      eventID: json['eventID']?.toString(),
     );
   }
 
-  // Convert to JSON (for storage)
   Map<String, dynamic> toJson() {
     return {
       'id': id,
@@ -57,13 +145,23 @@ class AlertModel {
       'radius': radius,
       'source': source,
       'metadata': metadata,
+      'eventID': eventID,
+      'safeLocations': safeLocations?.map((loc) => loc.toJson()).toList(),
     };
   }
 
-  // Check if alert is active (not expired)
-  bool get isActive => DateTime.now().isBefore(expiryTime);
+  @override
+  String toString() {
+    return 'AlertModel(id: $id, title: $title, description: $description, '
+        'severity: $severity, timestamp: $timestamp, expiryTime: $expiryTime, '
+        'latitude: $latitude, longitude: $longitude, radius: $radius, '
+        'source: $source, metadata: $metadata, eventID: $eventID, '
+        'safeLocations: ${safeLocations?.map((e) => e.toString()).toList()})';
+  }
 
-  // Get time ago string (e.g., "5 minutes ago")
+  // Add this getter to the AlertModel class in your models/alert_model.dart file
+
+  // Returns a human-readable relative time string
   String get timeAgo {
     final now = DateTime.now();
     final difference = now.difference(timestamp);
@@ -74,26 +172,30 @@ class AlertModel {
       return '${difference.inMinutes} ${difference.inMinutes == 1 ? 'minute' : 'minutes'} ago';
     } else if (difference.inHours < 24) {
       return '${difference.inHours} ${difference.inHours == 1 ? 'hour' : 'hours'} ago';
-    } else if (difference.inDays < 30) {
+    } else if (difference.inDays < 7) {
       return '${difference.inDays} ${difference.inDays == 1 ? 'day' : 'days'} ago';
+    } else if (difference.inDays < 30) {
+      return '${(difference.inDays / 7).floor()} ${(difference.inDays / 7).floor() == 1 ? 'week' : 'weeks'} ago';
+    } else if (difference.inDays < 365) {
+      return '${(difference.inDays / 30).floor()} ${(difference.inDays / 30).floor() == 1 ? 'month' : 'months'} ago';
     } else {
-      return timestamp.toString().substring(0, 10); // Just date
+      return '${(difference.inDays / 365).floor()} ${(difference.inDays / 365).floor() == 1 ? 'year' : 'years'} ago';
     }
   }
 
-  // Get color based on severity
-  int getColorValue() {
-    switch (severity.toLowerCase()) {
-      case 'critical':
-        return 0xFFD32F2F; // Red
-      case 'warning':
-        return 0xFFF57C00; // Orange
-      case 'watch':
-        return 0xFFFFB300; // Amber
-      case 'info':
-        return 0xFF0288D1; // Light Blue
-      default:
-        return 0xFF0288D1; // Default to info color
+  // You might also want to add this getter for expiry time
+  String get expiresIn {
+    final now = DateTime.now();
+    final difference = expiryTime.difference(now);
+
+    if (difference.inSeconds < 0) {
+      return 'Expired';
+    } else if (difference.inMinutes < 60) {
+      return 'Expires in ${difference.inMinutes} ${difference.inMinutes == 1 ? 'minute' : 'minutes'}';
+    } else if (difference.inHours < 24) {
+      return 'Expires in ${difference.inHours} ${difference.inHours == 1 ? 'hour' : 'hours'}';
+    } else {
+      return 'Expires in ${difference.inDays} ${difference.inDays == 1 ? 'day' : 'days'}';
     }
   }
 }

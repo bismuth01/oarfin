@@ -4,6 +4,7 @@ import '../../services/auth_service.dart';
 import '../../services/location_service.dart';
 import '../../utils/theme.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../dev/developer_menu_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({Key? key}) : super(key: key);
@@ -21,6 +22,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   bool _showWatchAlerts = true;
   bool _showInfoAlerts = true;
   double _alertRadius = 100.0; // km
+  int _tapCount = 0;
 
   @override
   void initState() {
@@ -84,47 +86,46 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           CircleAvatar(
                             radius: 50,
                             backgroundColor: AppColors.primary.withOpacity(0.1),
-                            child:
-                                isAnonymous
-                                    ? const Icon(
-                                      Icons.person,
-                                      size: 50,
-                                      color: AppColors.primary,
-                                    )
-                                    : (user?.photoUrl != null
-                                        ? ClipRRect(
-                                          borderRadius: BorderRadius.circular(
-                                            50,
-                                          ),
-                                          child: Image.network(
-                                            user!.photoUrl!,
-                                            width: 100,
-                                            height: 100,
-                                            fit: BoxFit.cover,
-                                            errorBuilder: (
-                                              context,
-                                              error,
-                                              stackTrace,
-                                            ) {
-                                              return const Icon(
-                                                Icons.person,
-                                                size: 50,
-                                                color: AppColors.primary,
-                                              );
-                                            },
-                                          ),
-                                        )
-                                        : Text(
-                                          user?.displayName
-                                                  ?.substring(0, 1)
-                                                  .toUpperCase() ??
-                                              'U',
-                                          style: const TextStyle(
-                                            fontSize: 40,
-                                            fontWeight: FontWeight.bold,
-                                            color: AppColors.primary,
-                                          ),
-                                        )),
+                            child: isAnonymous
+                                ? const Icon(
+                                    Icons.person,
+                                    size: 50,
+                                    color: AppColors.primary,
+                                  )
+                                : (user?.photoUrl != null
+                                    ? ClipRRect(
+                                        borderRadius: BorderRadius.circular(
+                                          50,
+                                        ),
+                                        child: Image.network(
+                                          user!.photoUrl!,
+                                          width: 100,
+                                          height: 100,
+                                          fit: BoxFit.cover,
+                                          errorBuilder: (
+                                            context,
+                                            error,
+                                            stackTrace,
+                                          ) {
+                                            return const Icon(
+                                              Icons.person,
+                                              size: 50,
+                                              color: AppColors.primary,
+                                            );
+                                          },
+                                        ),
+                                      )
+                                    : Text(
+                                        user?.displayName
+                                                ?.substring(0, 1)
+                                                .toUpperCase() ??
+                                            'U',
+                                        style: const TextStyle(
+                                          fontSize: 40,
+                                          fontWeight: FontWeight.bold,
+                                          color: AppColors.primary,
+                                        ),
+                                      )),
                           ),
                           const SizedBox(height: 16),
                           Text(
@@ -353,11 +354,26 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   ),
                   const Divider(height: 1),
                   ListTile(
-                    title: const Text('Terms of Service'),
+                    title: const Text('DEV MDE'),
                     leading: const Icon(Icons.description),
                     trailing: const Icon(Icons.chevron_right),
                     onTap: () {
                       // TODO: Open terms of service
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const DeveloperMenuScreen(),
+                        ),
+                      );
+                    },
+                  ),
+                  const Divider(height: 1),
+                  ListTile(
+                    title: const Text('Terms Of Service'),
+                    leading: const Icon(Icons.description),
+                    trailing: const Icon(Icons.chevron_right),
+                    onTap: () {
+                      // TODO: Open privacy policy
                     },
                   ),
                   const Divider(height: 1),

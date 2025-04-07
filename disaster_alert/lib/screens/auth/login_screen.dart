@@ -85,19 +85,21 @@ class _LoginScreenState extends State<LoginScreen> {
                       color: Colors.white,
                       borderRadius: BorderRadius.circular(60),
                     ),
-                    child: const Icon(
-                      Icons.notifications_active,
-                      size: 60,
-                      color: AppColors.primary,
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(60),
+                      child: Image.asset(
+                        "assets/icons/app_icon.png",
+                        fit: BoxFit.cover,
+                      ),
                     ),
                   ),
                   const SizedBox(height: 24),
 
                   // App name
                   const Text(
-                    'Disaster Alert',
+                    'Oarfin - Disaster Alerts',
                     style: TextStyle(
-                      fontSize: 32,
+                      fontSize: 26,
                       fontWeight: FontWeight.bold,
                       color: Colors.white,
                     ),

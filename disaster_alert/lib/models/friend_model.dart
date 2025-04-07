@@ -1,53 +1,67 @@
 class FriendModel {
   final String id;
   final String userId;
+  final String? requestorID; // Add this field
+  final bool isRequestor; // Add this field
   final String displayName;
   final String email;
-  final String? photoUrl;
   final double? latitude;
   final double? longitude;
   final DateTime? lastLocationUpdate;
   final bool hasActiveAlerts;
-  final List<String>? activeAlertIds;
+  final List<String> activeAlertIds;
   final FriendStatus status;
+  final int? batteryLevel;
+  final String? photoUrl;
 
   FriendModel({
     required this.id,
     required this.userId,
+    this.requestorID, // Add this field
+    this.isRequestor = false, // Add this field with default
     required this.displayName,
-    required this.email,
-    this.photoUrl,
+    required this.email, //ye break kar sakta keep an eye on it
     this.latitude,
     this.longitude,
     this.lastLocationUpdate,
     this.hasActiveAlerts = false,
-    this.activeAlertIds,
-    this.status = FriendStatus.accepted,
+    this.activeAlertIds = const [],
+    required this.status,
+    this.batteryLevel,
+    this.photoUrl,
   });
 
-  // Create from JSON (for Firestore)
+  // Update fromJson method
   factory FriendModel.fromJson(Map<String, dynamic> json) {
+    print('Parsing FriendModel: ${json.toString()}');
+
+    // Handle special case for email which might be null
+    final email = json['email'] as String? ?? 'unknown@example.com';
+
     return FriendModel(
-      id: json['id'] as String,
-      userId: json['userId'] as String,
-      displayName: json['displayName'] as String,
-      email: json['email'] as String,
-      photoUrl: json['photoUrl'] as String?,
-      latitude: json['latitude'] as double?,
-      longitude: json['longitude'] as double?,
-      lastLocationUpdate:
-          json['lastLocationUpdate'] != null
-              ? DateTime.parse(json['lastLocationUpdate'] as String)
-              : null,
-      hasActiveAlerts: json['hasActiveAlerts'] as bool? ?? false,
-      activeAlertIds:
-          (json['activeAlertIds'] as List<dynamic>?)
-              ?.map((e) => e as String)
-              .toList(),
-      status: FriendStatus.values.firstWhere(
-        (e) => e.toString() == 'FriendStatus.${json['status']}',
-        orElse: () => FriendStatus.pending,
-      ),
+      id: json['id'].toString(),
+      userId: json['userId'].toString(),
+      requestorID: json['requestorID']?.toString(),
+      isRequestor: json['isRequestor'] == true,
+      displayName: json['displayName'] ?? 'Unknown User',
+      email: email, // Use the safely accessed email
+      latitude: json['latitude'] != null
+          ? double.parse(json['latitude'].toString())
+          : null,
+      longitude: json['longitude'] != null
+          ? double.parse(json['longitude'].toString())
+          : null,
+      lastLocationUpdate: json['lastLocationUpdate'] != null
+          ? DateTime.parse(json['lastLocationUpdate'])
+          : null,
+      hasActiveAlerts: json['hasActiveAlerts'] == true ||
+          (json['activeAlertsCount'] is num && json['activeAlertsCount'] > 0),
+      activeAlertIds: json['activeAlertIds'] != null
+          ? List<String>.from(json['activeAlertIds'])
+          : [],
+      status: _parseStatus(json['status']),
+      batteryLevel: json['batteryLevel'],
+      photoUrl: json['photoUrl'],
     );
   }
 
@@ -68,32 +82,52 @@ class FriendModel {
     };
   }
 
-  // Create a copy with updated fields
+  static FriendStatus _parseStatus(String? statusStr) {
+    if (statusStr == null) return FriendStatus.pending;
+
+    switch (statusStr.toLowerCase()) {
+      case 'pending':
+        return FriendStatus.pending;
+      case 'accepted':
+        return FriendStatus.accepted;
+      case 'rejected':
+        return FriendStatus.rejected;
+      default:
+        return FriendStatus.pending; // Default status
+    }
+  }
+
   FriendModel copyWith({
     String? id,
     String? userId,
+    String? requestorID,
+    bool? isRequestor,
     String? displayName,
     String? email,
-    String? photoUrl,
     double? latitude,
     double? longitude,
     DateTime? lastLocationUpdate,
     bool? hasActiveAlerts,
     List<String>? activeAlertIds,
     FriendStatus? status,
+    int? batteryLevel,
+    String? photoUrl,
   }) {
     return FriendModel(
       id: id ?? this.id,
       userId: userId ?? this.userId,
+      requestorID: requestorID ?? this.requestorID,
+      isRequestor: isRequestor ?? this.isRequestor,
       displayName: displayName ?? this.displayName,
       email: email ?? this.email,
-      photoUrl: photoUrl ?? this.photoUrl,
       latitude: latitude ?? this.latitude,
       longitude: longitude ?? this.longitude,
       lastLocationUpdate: lastLocationUpdate ?? this.lastLocationUpdate,
       hasActiveAlerts: hasActiveAlerts ?? this.hasActiveAlerts,
       activeAlertIds: activeAlertIds ?? this.activeAlertIds,
       status: status ?? this.status,
+      batteryLevel: batteryLevel ?? this.batteryLevel,
+      photoUrl: photoUrl ?? this.photoUrl,
     );
   }
 

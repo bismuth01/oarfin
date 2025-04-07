@@ -4,14 +4,28 @@ import 'package:latlong2/latlong.dart';
 import 'package:provider/provider.dart';
 import '../../services/location_service.dart';
 import '../../services/alert_service.dart';
+import '../../services/friend_service.dart';
+import '../../services/tab_navigation_service.dart'; // Add this import
 import '../../models/alert_model.dart';
+import '../../models/friend_model.dart';
 import '../../utils/theme.dart';
+import '../alerts/alert_details_screen.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class MapTab extends StatefulWidget {
   const MapTab({Key? key}) : super(key: key);
 
   @override
-  State<MapTab> createState() => _MapTabState();
+  _MapTabState createState() => _MapTabState();
+
+  // Expose state type for external access
+  static Type get stateType => _MapTabState;
+}
+
+enum MapType {
+  standard,
+  satellite,
+  terrain,
 }
 
 class _MapTabState extends State<MapTab> {
@@ -21,31 +35,152 @@ class _MapTabState extends State<MapTab> {
   // Default map center (will be updated with user's location)
   final LatLng _center = const LatLng(37.7749, -122.4194); // San Francisco
 
+  // Map type settings
+  MapType _currentMapType = MapType.standard;
+
   // Filter settings
   bool _showCritical = true;
   bool _showWarning = true;
   bool _showWatch = true;
   bool _showInfo = true;
   bool _showFriends = true;
-  bool _showSafeZones = false;
+  bool _showSafeZones = true;
 
   @override
   void initState() {
     super.initState();
-    _loadPlaceholderData();
+    _loadMapData();
 
-    // Simulate loading delay
-    Future.delayed(const Duration(seconds: 1), () {
+    // Check if we need to focus on a friend
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _checkForFriendFocus();
+    });
+  }
+
+  @override
+  void didUpdateWidget(MapTab oldWidget) {
+    super.didUpdateWidget(oldWidget);
+
+    // Check again when the widget updates
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _checkForFriendFocus();
+    });
+  }
+
+  void _checkForFriendFocus() {
+    try {
+      final navigationService =
+          Provider.of<TabNavigationService>(context, listen: false);
+      final friend = navigationService.focusFriend;
+
+      if (friend != null &&
+          friend.latitude != null &&
+          friend.longitude != null) {
+        // Focus on the friend's location
+        _mapController.move(
+          LatLng(friend.latitude!, friend.longitude!),
+          15.0,
+        );
+
+        // Show a snackbar
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Showing location of ${friend.displayName}'),
+            behavior: SnackBarBehavior.floating,
+            duration: const Duration(seconds: 2),
+          ),
+        );
+        navigationService.clearFriendFocus();
+        return;
+      }
+      final alert = navigationService.focusAlert;
+      if (alert != null) {
+        _mapController.move(
+          LatLng(alert.latitude, alert.longitude),
+          15.0,
+        );
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Showing alert: ${alert.title}'),
+            behavior: SnackBarBehavior.floating,
+            duration: const Duration(seconds: 2),
+          ),
+        );
+
+        navigationService.clearAlertFocus();
+      }
+    } catch (e) {
+      print('Error checking for friend focus: $e');
+      // Ignore errors from the navigation service - it might not be registered yet
+    }
+  }
+
+  // Focus on a specific location
+  void focusOnLocation(double latitude, double longitude, [String? name]) {
+    _mapController.move(LatLng(latitude, longitude), 15.0);
+
+    // Optionally show a popup for the focused location
+    if (name != null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Showing location of $name'),
+          behavior: SnackBarBehavior.floating,
+          duration: const Duration(seconds: 2),
+        ),
+      );
+    }
+  }
+
+  Future<void> _loadMapData() async {
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      final alertService = Provider.of<AlertService>(context, listen: false);
+      final locationService =
+          Provider.of<LocationService>(context, listen: false);
+      final friendService = Provider.of<FriendService>(context, listen: false);
+
+      // Fetch position first
+      final position = await locationService.getCurrentPosition();
+
+      // Then fetch alerts and friends data
+      await Future.wait(
+          [alertService.fetchAlerts(), friendService.refreshFriends()]);
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error loading map data: ${e.toString()}'),
+            behavior: SnackBarBehavior.floating,
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } finally {
       if (mounted) {
         setState(() {
           _isLoading = false;
         });
       }
-    });
+    }
   }
 
-  void _loadPlaceholderData() {
-    // This method would be replaced with actual data loading in a real implementation
+  String _getMapTileUrl() {
+    switch (_currentMapType) {
+      case MapType.standard:
+        return 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
+      case MapType.satellite:
+        // Note: This requires an account with a map provider.
+        // Using a placeholder satellite map URL here:
+        return 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}';
+      case MapType.terrain:
+        return 'https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png';
+      default:
+        return 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
+    }
   }
 
   @override
@@ -56,8 +191,18 @@ class _MapTabState extends State<MapTab> {
       );
     }
 
-    // Get placeholder alerts
-    final List<AlertModel> alerts = _getPlaceholderAlerts();
+    // Get actual data from providers
+    final alertService = Provider.of<AlertService>(context);
+    final friendService = Provider.of<FriendService>(context);
+    final locationService = Provider.of<LocationService>(context);
+
+    final List<AlertModel> alerts = alertService.alerts;
+    final List<FriendModel> friends = friendService.friends;
+
+    // Get safe locations from the alert service
+    final safeLocations = alertService.alerts.expand((alert) {
+      return alert.safeLocations ?? [];
+    }).toList();
 
     return Stack(
       children: [
@@ -65,7 +210,10 @@ class _MapTabState extends State<MapTab> {
         FlutterMap(
           mapController: _mapController,
           options: MapOptions(
-            initialCenter: _center,
+            initialCenter: locationService.currentPosition != null
+                ? LatLng(locationService.currentPosition!.latitude,
+                    locationService.currentPosition!.longitude)
+                : _center,
             initialZoom: 11.0,
             onTap: (tapPosition, point) {
               // Close any open info dialogs
@@ -74,7 +222,7 @@ class _MapTabState extends State<MapTab> {
           children: [
             // Base map layer
             TileLayer(
-              urlTemplate: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+              urlTemplate: _getMapTileUrl(),
               subdomains: const ['a', 'b', 'c'],
             ),
 
@@ -93,7 +241,6 @@ class _MapTabState extends State<MapTab> {
             ),
 
             // Alert markers
-            // Alert markers
             MarkerLayer(
               markers: alerts
                   .where((alert) => _filterAlert(alert))
@@ -110,6 +257,96 @@ class _MapTabState extends State<MapTab> {
                       ))
                   .toList(),
             ),
+
+            // Safe location markers
+            if (_showSafeZones)
+              MarkerLayer(
+                markers: safeLocations
+                    .map((safeLocation) => Marker(
+                          point: LatLng(
+                              safeLocation.latitude, safeLocation.longitude),
+                          child: GestureDetector(
+                            onTap: () => _showSafeLocationInfo(safeLocation),
+                            child: const Icon(
+                              Icons.local_hospital,
+                              color: AppColors.safeZone,
+                              size: 30,
+                            ),
+                          ),
+                        ))
+                    .toList(),
+              ),
+
+            // Friend markers
+            if (_showFriends)
+              MarkerLayer(
+                markers: friends
+                    .map((friend) => Marker(
+                          point: friend.latitude != null &&
+                                  friend.longitude != null
+                              ? LatLng(friend.latitude!, friend.longitude!)
+                              : _center,
+                          child: GestureDetector(
+                            onTap: () => _showFriendInfo(friend),
+                            child: Stack(
+                              children: [
+                                const Icon(
+                                  Icons.person_pin,
+                                  color: AppColors.primary,
+                                  size: 30,
+                                ),
+                                if (friend.hasActiveAlerts)
+                                  Positioned(
+                                    right: 0,
+                                    top: 0,
+                                    child: Container(
+                                      width: 10,
+                                      height: 10,
+                                      decoration: BoxDecoration(
+                                        color: AppColors.warning,
+                                        shape: BoxShape.circle,
+                                        border: Border.all(
+                                            color: Colors.white, width: 1),
+                                      ),
+                                    ),
+                                  ),
+                              ],
+                            ),
+                          ),
+                        ))
+                    .toList(),
+              ),
+
+            // User location marker
+            if (locationService.currentPosition != null)
+              MarkerLayer(
+                markers: [
+                  Marker(
+                    point: LatLng(
+                      locationService.currentPosition!.latitude,
+                      locationService.currentPosition!.longitude,
+                    ),
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: Colors.blue.withOpacity(0.5),
+                        shape: BoxShape.circle,
+                      ),
+                      width: 20,
+                      height: 20,
+                      child: Center(
+                        child: Container(
+                          decoration: const BoxDecoration(
+                            color: Colors.blue,
+                            shape: BoxShape.circle,
+                          ),
+                          width: 10,
+                          height: 10,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
           ],
         ),
 
@@ -123,7 +360,51 @@ class _MapTabState extends State<MapTab> {
                 icon: Icons.layers,
                 tooltip: 'Change Map Type',
                 onPressed: () {
-                  // TODO: Implement map type switching
+                  // Show a popup menu for map type selection
+                  showDialog(
+                    context: context,
+                    builder: (context) => AlertDialog(
+                      title: const Text('Select Map Type'),
+                      content: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          ListTile(
+                            leading: const Icon(Icons.map),
+                            title: const Text('Standard'),
+                            selected: _currentMapType == MapType.standard,
+                            onTap: () {
+                              setState(() {
+                                _currentMapType = MapType.standard;
+                              });
+                              Navigator.pop(context);
+                            },
+                          ),
+                          ListTile(
+                            leading: const Icon(Icons.satellite),
+                            title: const Text('Satellite'),
+                            selected: _currentMapType == MapType.satellite,
+                            onTap: () {
+                              setState(() {
+                                _currentMapType = MapType.satellite;
+                              });
+                              Navigator.pop(context);
+                            },
+                          ),
+                          ListTile(
+                            leading: const Icon(Icons.terrain),
+                            title: const Text('Terrain'),
+                            selected: _currentMapType == MapType.terrain,
+                            onTap: () {
+                              setState(() {
+                                _currentMapType = MapType.terrain;
+                              });
+                              Navigator.pop(context);
+                            },
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
                 },
               ),
               const SizedBox(height: 8),
@@ -139,10 +420,11 @@ class _MapTabState extends State<MapTab> {
                 icon: Icons.refresh,
                 tooltip: 'Refresh Alerts',
                 onPressed: () {
-                  // TODO: Refresh alerts on map
+                  // Refresh all map data
+                  _loadMapData();
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(
-                      content: Text('Refreshing alerts...'),
+                      content: Text('Refreshing map data...'),
                       duration: Duration(seconds: 1),
                     ),
                   );
@@ -168,7 +450,7 @@ class _MapTabState extends State<MapTab> {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   const Text(
-                    'Alert Filters',
+                    'Map Filters',
                     style: AppTextStyles.headline3,
                   ),
                   const SizedBox(height: 12),
@@ -367,6 +649,25 @@ class _MapTabState extends State<MapTab> {
               maxLines: 3,
               overflow: TextOverflow.ellipsis,
             ),
+            const SizedBox(height: 8),
+            if (alert.safeLocations != null && alert.safeLocations!.isNotEmpty)
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Safe Locations Available',
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      color: AppColors.safeZone,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    '${alert.safeLocations!.length} safe zones near this alert',
+                    style: AppTextStyles.body2,
+                  ),
+                ],
+              ),
             const SizedBox(height: 16),
             Row(
               mainAxisAlignment: MainAxisAlignment.end,
@@ -379,7 +680,13 @@ class _MapTabState extends State<MapTab> {
                 ElevatedButton(
                   onPressed: () {
                     Navigator.pop(context);
-                    // TODO: Navigate to alert details
+                    // Navigate to alert details screen
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => AlertDetailsScreen(alert: alert),
+                      ),
+                    );
                   },
                   child: const Text('VIEW DETAILS'),
                 ),
@@ -389,6 +696,350 @@ class _MapTabState extends State<MapTab> {
         ),
       ),
     );
+  }
+
+  void _showSafeLocationInfo(dynamic safeLocation) {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (context) => Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 4,
+                  ),
+                  decoration: BoxDecoration(
+                    color: AppColors.safeZone,
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                  child: const Text(
+                    'SAFE ZONE',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 12,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    safeLocation.type ?? 'Safe Location',
+                    style: AppTextStyles.headline3,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Text(
+              safeLocation.description ??
+                  'This location has been designated as a safe zone for the current emergency.',
+              style: AppTextStyles.body1,
+              maxLines: 3,
+              overflow: TextOverflow.ellipsis,
+            ),
+            const SizedBox(height: 16),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('CLOSE'),
+                ),
+                const SizedBox(width: 8),
+                ElevatedButton(
+                  onPressed: () async {
+                    Navigator.pop(context);
+                    // Open map with directions to the safe location
+                    final latitude = safeLocation.latitude;
+                    final longitude = safeLocation.longitude;
+                    final url =
+                        'https://www.google.com/maps/dir/?api=1&destination=$latitude,$longitude&travelmode=driving';
+                    final uri = Uri.parse(url);
+
+                    try {
+                      if (await canLaunchUrl(uri)) {
+                        await launchUrl(uri,
+                            mode: LaunchMode.externalApplication);
+                      } else {
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('Could not open maps application'),
+                              behavior: SnackBarBehavior.floating,
+                            ),
+                          );
+                        }
+                      }
+                    } catch (e) {
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content:
+                                Text('Error opening maps: ${e.toString()}'),
+                            behavior: SnackBarBehavior.floating,
+                            backgroundColor: Colors.red,
+                          ),
+                        );
+                      }
+                    }
+                  },
+                  child: const Text('GET DIRECTIONS'),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showFriendInfo(FriendModel friend) {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (context) => Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                CircleAvatar(
+                  radius: 24,
+                  backgroundColor: AppColors.primary.withOpacity(0.2),
+                  child: Text(
+                    friend.displayName.substring(0, 1).toUpperCase(),
+                    style: const TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                      color: AppColors.primary,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        friend.displayName,
+                        style: AppTextStyles.headline3,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      Text(
+                        friend.email,
+                        style: AppTextStyles.body2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            if (friend.lastLocationUpdate != null)
+              Text(
+                'Last updated: ${_formatTimestamp(friend.lastLocationUpdate!)}',
+                style: AppTextStyles.body2.copyWith(color: Colors.grey),
+              ),
+            if (friend.hasActiveAlerts)
+              Padding(
+                padding: const EdgeInsets.only(top: 8.0),
+                child: Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: AppColors.warning.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: AppColors.warning, width: 1),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(Icons.warning_amber,
+                          color: AppColors.warning, size: 20),
+                      const SizedBox(width: 8),
+                      const Expanded(
+                        child: Text(
+                          'This friend has active alerts in their area',
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            const SizedBox(height: 16),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('CLOSE'),
+                ),
+                const SizedBox(width: 8),
+                if (friend.hasActiveAlerts)
+                  ElevatedButton(
+                    onPressed: () {
+                      Navigator.pop(context);
+                      // Show a dialog or bottom sheet with the friend's alerts
+                      showModalBottomSheet(
+                        context: context,
+                        isScrollControlled: true,
+                        shape: const RoundedRectangleBorder(
+                          borderRadius:
+                              BorderRadius.vertical(top: Radius.circular(16)),
+                        ),
+                        builder: (context) {
+                          // Get alerts for this friend
+                          final alertIds = friend.activeAlertIds ?? [];
+                          final alertService =
+                              Provider.of<AlertService>(context, listen: false);
+                          final friendAlerts = alertService.alerts
+                              .where((alert) => alertIds.contains(alert.id))
+                              .toList();
+
+                          return DraggableScrollableSheet(
+                            initialChildSize: 0.5,
+                            minChildSize: 0.3,
+                            maxChildSize: 0.8,
+                            expand: false,
+                            builder: (context, scrollController) {
+                              return Column(
+                                children: [
+                                  Padding(
+                                    padding: const EdgeInsets.all(16.0),
+                                    child: Row(
+                                      children: [
+                                        CircleAvatar(
+                                          backgroundColor: AppColors.primary
+                                              .withOpacity(0.2),
+                                          child: Text(
+                                            friend.displayName
+                                                .substring(0, 1)
+                                                .toUpperCase(),
+                                            style: const TextStyle(
+                                              color: AppColors.primary,
+                                              fontWeight: FontWeight.bold,
+                                            ),
+                                          ),
+                                        ),
+                                        const SizedBox(width: 12),
+                                        Expanded(
+                                          child: Text(
+                                            '${friend.displayName}\'s Alerts',
+                                            style: AppTextStyles.headline3,
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
+                                        ),
+                                        IconButton(
+                                          icon: const Icon(Icons.close),
+                                          onPressed: () =>
+                                              Navigator.pop(context),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  const Divider(),
+                                  if (friendAlerts.isEmpty)
+                                    const Expanded(
+                                      child: Center(
+                                        child: Text(
+                                          'No details available for alerts in this area',
+                                          style: TextStyle(color: Colors.grey),
+                                        ),
+                                      ),
+                                    )
+                                  else
+                                    Expanded(
+                                      child: ListView.builder(
+                                        controller: scrollController,
+                                        padding: const EdgeInsets.all(16),
+                                        itemCount: friendAlerts.length,
+                                        itemBuilder: (context, index) {
+                                          final alert = friendAlerts[index];
+                                          return Card(
+                                            margin: const EdgeInsets.only(
+                                                bottom: 12),
+                                            child: ListTile(
+                                              leading: CircleAvatar(
+                                                backgroundColor: Color(
+                                                    alert.getColorValue()),
+                                                child: Icon(
+                                                  _getSeverityIcon(
+                                                      alert.severity),
+                                                  color: Colors.white,
+                                                  size: 18,
+                                                ),
+                                              ),
+                                              title: Text(alert.title),
+                                              subtitle: Text(
+                                                alert.description,
+                                                maxLines: 2,
+                                                overflow: TextOverflow.ellipsis,
+                                              ),
+                                              onTap: () {
+                                                Navigator.pop(context);
+                                                Navigator.push(
+                                                  context,
+                                                  MaterialPageRoute(
+                                                    builder: (context) =>
+                                                        AlertDetailsScreen(
+                                                            alert: alert),
+                                                  ),
+                                                );
+                                              },
+                                            ),
+                                          );
+                                        },
+                                      ),
+                                    ),
+                                ],
+                              );
+                            },
+                          );
+                        },
+                      );
+                    },
+                    child: const Text('VIEW ALERTS'),
+                  ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  String _formatTimestamp(DateTime timestamp) {
+    final now = DateTime.now();
+    final difference = now.difference(timestamp);
+
+    if (difference.inMinutes < 1) {
+      return 'Just now';
+    } else if (difference.inHours < 1) {
+      return '${difference.inMinutes} ${difference.inMinutes == 1 ? 'minute' : 'minutes'} ago';
+    } else if (difference.inDays < 1) {
+      return '${difference.inHours} ${difference.inHours == 1 ? 'hour' : 'hours'} ago';
+    } else if (difference.inDays < 7) {
+      return '${difference.inDays} ${difference.inDays == 1 ? 'day' : 'days'} ago';
+    } else {
+      return '${timestamp.month}/${timestamp.day}/${timestamp.year}';
+    }
   }
 
   bool _filterAlert(AlertModel alert) {
@@ -404,52 +1055,6 @@ class _MapTabState extends State<MapTab> {
       default:
         return true;
     }
-  }
-
-  List<AlertModel> _getPlaceholderAlerts() {
-    final now = DateTime.now();
-
-    return [
-      AlertModel(
-        id: '1',
-        title: 'Flash Flood Warning',
-        description:
-            'Flash flooding is expected in your area. Move to higher ground immediately.',
-        severity: 'Critical',
-        timestamp: now.subtract(const Duration(minutes: 10)),
-        expiryTime: now.add(const Duration(hours: 6)),
-        latitude: 37.7749,
-        longitude: -122.4194,
-        radius: 5000, // 5 km
-        source: 'NOAA',
-      ),
-      AlertModel(
-        id: '2',
-        title: 'Thunderstorm Watch',
-        description:
-            'Severe thunderstorms possible in your area in the next 6 hours.',
-        severity: 'Warning',
-        timestamp: now.subtract(const Duration(minutes: 30)),
-        expiryTime: now.add(const Duration(hours: 12)),
-        latitude: 37.8044,
-        longitude: -122.2712,
-        radius: 10000, // 10 km
-        source: 'NOAA',
-      ),
-      AlertModel(
-        id: '3',
-        title: 'Earthquake Report',
-        description:
-            'Magnitude 4.2 earthquake detected 50 miles from your location.',
-        severity: 'Info',
-        timestamp: now.subtract(const Duration(hours: 2)),
-        expiryTime: now.add(const Duration(hours: 24)),
-        latitude: 37.4419,
-        longitude: -122.1430,
-        radius: 50000, // 50 km
-        source: 'USGS',
-      ),
-    ];
   }
 
   IconData _getSeverityIcon(String severity) {

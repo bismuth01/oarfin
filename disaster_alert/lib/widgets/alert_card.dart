@@ -2,15 +2,19 @@ import 'package:flutter/material.dart';
 import '../models/alert_model.dart';
 import '../utils/theme.dart';
 import '../screens/alerts/alert_details_screen.dart';
+import 'package:provider/provider.dart';
+import '../services/tab_navigation_service.dart';
 
 class AlertCard extends StatelessWidget {
   final AlertModel alert;
   final VoidCallback? onMapPressed;
-  
+  final VoidCallback? onTap;
+
   const AlertCard({
     Key? key,
     required this.alert,
     this.onMapPressed,
+    this.onTap,
   }) : super(key: key);
 
   @override
@@ -63,7 +67,7 @@ class AlertCard extends StatelessWidget {
               ],
             ),
           ),
-          
+
           // Alert content
           Padding(
             padding: const EdgeInsets.all(16),
@@ -88,9 +92,29 @@ class AlertCard extends StatelessWidget {
                     OutlinedButton.icon(
                       icon: const Icon(Icons.map),
                       label: const Text('View on Map'),
-                      onPressed: onMapPressed ?? () {
-                        // Default map action if none provided
-                      },
+                      onPressed: onMapPressed ??
+                          () {
+                            try {
+                              final navigationService =
+                                  Provider.of<TabNavigationService>(context,
+                                      listen: false);
+
+                              // Navigate to map tab and focus on this alert
+                              navigationService
+                                  .navigateToTab(2); // 2 is the map tab index
+
+                              // Show a short confirmation message
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text('Showing alert on map'),
+                                  duration: Duration(seconds: 1),
+                                  behavior: SnackBarBehavior.floating,
+                                ),
+                              );
+                            } catch (e) {
+                              print('Error navigating to map: $e');
+                            }
+                          },
                     ),
                     TextButton.icon(
                       icon: const Icon(Icons.info_outline),
@@ -99,7 +123,8 @@ class AlertCard extends StatelessWidget {
                         Navigator.push(
                           context,
                           MaterialPageRoute(
-                            builder: (context) => AlertDetailsScreen(alert: alert),
+                            builder: (context) =>
+                                AlertDetailsScreen(alert: alert),
                           ),
                         );
                       },
@@ -113,7 +138,7 @@ class AlertCard extends StatelessWidget {
       ),
     );
   }
-  
+
   IconData _getSeverityIcon(String severity) {
     switch (severity.toLowerCase()) {
       case 'critical':

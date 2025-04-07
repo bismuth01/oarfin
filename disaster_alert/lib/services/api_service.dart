@@ -3,13 +3,17 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'auth_service.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 class ApiService {
-  final String baseUrl =
-      'https://your-server-url.com/api'; // Update with your server URL
-  final AuthService _authService;
+  final String baseUrl;
+  final AuthService? _authService;
 
-  ApiService(this._authService);
+  ApiService({String? baseUrl, AuthService? authService})
+      : baseUrl = baseUrl ??
+            dotenv.env['DISASTER_API_BASE_URL'] ??
+            'http://localhost:3000',
+        _authService = authService;
 
   // Get the auth token from secure storage
   Future<String?> _getToken() async {
@@ -20,9 +24,12 @@ class ApiService {
   // Headers for authenticated requests
   Future<Map<String, String>> _getHeaders() async {
     final token = await _getToken();
+    final currentUser = _authService?.currentUser;
+
     return {
       'Content-Type': 'application/json',
       'Authorization': token != null ? 'Bearer $token' : '',
+      'X-User-ID': currentUser?.uid ?? '', // Fallback method for authentication
     };
   }
 
@@ -30,6 +37,12 @@ class ApiService {
   Future<http.Response> get(String endpoint,
       {Map<String, dynamic>? queryParams}) async {
     final headers = await _getHeaders();
+    if (_authService?.currentUser != null) {
+      queryParams = queryParams ?? {};
+      if (!queryParams.containsKey('userID')) {
+        queryParams['userID'] = _authService!.currentUser!.uid;
+      }
+    }
     final uri =
         Uri.parse('$baseUrl$endpoint').replace(queryParameters: queryParams);
 
@@ -72,9 +85,9 @@ class ApiService {
 
   // Handle common error responses
   void handleError(http.Response response) {
-    if (response.statusCode == 401) {
+    if (response.statusCode == 401 && _authService != null) {
       // Token expired or invalid, trigger re-authentication
-      _authService.signOut();
+      _authService!.signOut();
     }
 
     throw ApiException('API Error: ${response.statusCode}\n${response.body}');

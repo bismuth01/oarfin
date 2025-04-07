@@ -1,5 +1,3 @@
-// ignore_for_file: unused_import
-
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../models/alert_model.dart';
@@ -7,6 +5,7 @@ import '../../services/alert_service.dart';
 import '../../utils/theme.dart';
 import '../../widgets/alert_card.dart';
 import '../alerts/alert_details_screen.dart';
+import '../../services/tab_navigation_service.dart';
 
 class AlertsTab extends StatefulWidget {
   const AlertsTab({Key? key}) : super(key: key);
@@ -21,15 +20,45 @@ class _AlertsTabState extends State<AlertsTab> {
   @override
   void initState() {
     super.initState();
-    // TODO: Fetch alerts when we implement the API service
-    // For now, just simulate loading
-    Future.delayed(const Duration(seconds: 1), () {
+    // Fetch alerts when the tab is initialized
+    _fetchAlerts();
+  }
+
+  Future<void> _fetchAlerts() async {
+    print('[DEBUG] _fetchAlerts() called');
+
+    final alertService = Provider.of<AlertService>(context, listen: false);
+
+    setState(() {
+      _isLoading = true;
+    });
+    print('[DEBUG] Set _isLoading = true');
+
+    try {
+      print('[DEBUG] Calling alertService.fetchAlerts()...');
+      await alertService.fetchAlerts();
+      print('[DEBUG] alertService.fetchAlerts() completed successfully');
+    } catch (e, stacktrace) {
+      print('[ERROR] alertService.fetchAlerts() threw an error: $e');
+      print('[STACKTRACE] $stacktrace');
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error loading alerts: ${e.toString()}'),
+            behavior: SnackBarBehavior.floating,
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } finally {
       if (mounted) {
         setState(() {
           _isLoading = false;
         });
+        print('[DEBUG] Set _isLoading = false');
       }
-    });
+    }
   }
 
   @override
@@ -38,84 +67,77 @@ class _AlertsTabState extends State<AlertsTab> {
       return const Center(child: CircularProgressIndicator());
     }
 
-    // This is a placeholder. We'll replace this with actual alert data later
-    return Padding(
-      padding: const EdgeInsets.all(16.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text('Recent Alerts', style: AppTextStyles.headline1),
-          const SizedBox(height: 16),
-          Expanded(
-            child: ListView(
-              children: [
-                AlertCard(
-                  alert: AlertModel(
-                    id: '1',
-                    title: 'Flash Flood Warning',
-                    description:
-                        'Flash flooding is expected in your area. Move to higher ground immediately.',
-                    severity: 'Critical',
-                    timestamp: DateTime.now().subtract(
-                      const Duration(minutes: 10),
-                    ),
-                    expiryTime: DateTime.now().add(const Duration(hours: 6)),
-                    latitude: 37.7749,
-                    longitude: -122.4194,
-                    radius: 5000,
-                    source: 'NOAA',
-                    metadata: {
-                      'impactedAreas': 'Downtown, Richmond District',
-                      'safeZones': 'Higher ground, Multi-story buildings',
-                      'expectedDuration': '6 hours',
-                    },
-                  ),
-                  onMapPressed: () {
-                    // Switch to map tab and highlight this alert
-                    // For now, just navigate to the third tab (map)
-                    DefaultTabController.of(context)?.animateTo(2);
-                  },
-                ),
-                const SizedBox(height: 12),
-                AlertCard(
-                  alert: AlertModel(
-                    id: '2',
-                    title: 'Thunderstorm Watch',
-                    description:
-                        'Severe thunderstorms possible in your area in the next 6 hours.',
-                    severity: 'Warning',
-                    timestamp: DateTime.now().subtract(
-                      const Duration(minutes: 30),
-                    ),
-                    expiryTime: DateTime.now().add(const Duration(hours: 12)),
-                    latitude: 37.8044,
-                    longitude: -122.2712,
-                    radius: 10000,
-                    source: 'NOAA',
-                  ),
-                ),
-                const SizedBox(height: 12),
-                AlertCard(
-                  alert: AlertModel(
-                    id: '3',
-                    title: 'Earthquake Report',
-                    description:
-                        'Magnitude 4.2 earthquake detected 50 miles from your location.',
-                    severity: 'Info',
-                    timestamp: DateTime.now().subtract(
-                      const Duration(hours: 2),
-                    ),
-                    expiryTime: DateTime.now().add(const Duration(hours: 24)),
-                    latitude: 37.3382,
-                    longitude: -121.8863,
-                    radius: 50000,
-                    source: 'USGS',
-                  ),
-                ),
-              ],
+    final alertService = Provider.of<AlertService>(context);
+    final alerts = alertService.alerts;
+
+    if (alerts.isEmpty) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.notifications_off, size: 64, color: Colors.grey[400]),
+            const SizedBox(height: 16),
+            const Text(
+              'No alerts in your area',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
-          ),
-        ],
+            const SizedBox(height: 8),
+            const Text(
+              'You\'ll be notified when alerts are issued',
+              style: TextStyle(fontSize: 14, color: Colors.grey),
+            ),
+            const SizedBox(height: 24),
+            ElevatedButton.icon(
+              onPressed: _fetchAlerts,
+              icon: const Icon(Icons.refresh),
+              label: const Text('Refresh'),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return RefreshIndicator(
+      onRefresh: _fetchAlerts,
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text('Recent Alerts', style: AppTextStyles.headline1),
+            const SizedBox(height: 16),
+            Expanded(
+              child: ListView.builder(
+                itemCount: alerts.length,
+                itemBuilder: (context, index) {
+                  final alert = alerts[index];
+                  return Padding(
+                    padding: const EdgeInsets.only(bottom: 12.0),
+                    child: AlertCard(
+                      alert: alert,
+                      onMapPressed: () {
+                        // Use the navigation service
+                        final navigationService =
+                            Provider.of<TabNavigationService>(context,
+                                listen: false);
+                        navigationService.focusOnAlert(alert);
+                      },
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) =>
+                                AlertDetailsScreen(alert: alert),
+                          ),
+                        );
+                      },
+                    ),
+                  );
+                },
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

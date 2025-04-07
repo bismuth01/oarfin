@@ -19,6 +19,7 @@ dependencies:
   
   # Authentication
   google_sign_in: ^6.1.0
+  package_info_plus: ^4.0.0
   
   # State management
   provider: ^6.1.1
@@ -33,10 +34,14 @@ dependencies:
   # Networking & storage
   http: ^1.1.0
   shared_preferences: ^2.2.2
+  intl: ^0.18.1
   
   # Environment variables
   flutter_dotenv: ^5.1.0
   
+  url_launcher: ^6.1.12
+  share_plus: ^7.1.0
+
   # Battery info
   battery_plus: ^4.1.0
   
@@ -47,9 +52,25 @@ dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^3.0.0
+  flutter_launcher_icons: ^0.13.1
 
 flutter:
   uses-material-design: true
   
   assets:
+    - assets/icons/app_icon.png
     - .env
+
+flutter_launcher_icons:
+  android: "launcher_icon"
+  ios: true
+  image_path: "assets/icons/app_icon.png"
+  min_sdk_android: 21 # android min sdk min:16, default 21
+  adaptive_icon_background: "#ffffff" # Only for Android 8.0+ (API level 26+)
+  adaptive_icon_foreground: "assets/icons/app_icon.png" 
+  web:
+    generate: false
+  windows:
+    generate: false
+  macos:
+    generate: false
