@@ -1,0 +1,182 @@
+
+.videos-section {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 2rem 1rem;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  }
+  
+  .videos-section h2 {
+    font-size: 2rem;
+    color: #2d3748;
+    margin-bottom: 1.5rem;
+    text-align: center;
+    font-weight: 600;
+    position: relative;
+    padding-bottom: 0.5rem;
+  }
+  
+  .videos-section h2::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 80px;
+    height: 3px;
+    background: #ff4500; /* Reddit orange */
+  }
+  
+  .loading {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 300px;
+    color: #4a5568;
+  }
+  
+  .loading::before {
+    content: '';
+    display: block;
+    width: 60px;
+    height: 60px;
+    background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path fill="%23FF4500" d="M12 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0zm5.01 4.74c.69 0 1.25.56 1.25 1.25a1.25 1.25 0 0 1-2.5 0 1.25 1.25 0 0 1 1.25-1.25zm-9.71 1.25c0-.69.56-1.25 1.25-1.25.69 0 1.25.56 1.25 1.25a1.25 1.25 0 0 1-2.5 0zM12 5.5c-3.11 0-5.75 1.89-6.66 4.51a6.79 6.79 0 0 1 3.07-4.27c.62-.36 1.3-.54 1.99-.54.68 0 1.37.18 1.99.54a6.79 6.79 0 0 1 3.07 4.27C17.75 7.39 15.11 5.5 12 5.5zm-6.13 7.4a6.79 6.79 0 0 1-1.37-4.9v-.03c.69.32 1.44.5 2.22.5.87 0 1.69-.25 2.38-.68.26.55.4 1.16.4 1.8 0 1.94-1.62 3.5-3.63 3.5-.5 0-.97-.1-1.4-.27v.01zm15.29-4.9c0 .69-.32 1.3-.82 1.71.48.37.82.98.82 1.71v.03a6.79 6.79 0 0 1-1.37 4.9c-.43-.17-.9-.27-1.4-.27-2.01 0-3.63-1.56-3.63-3.5 0-.64.14-1.25.4-1.8.69.43 1.51.68 2.38.68.78 0 1.53-.18 2.22-.5v-.03z"/></svg>');
+    background-size: contain;
+    background-repeat: no-repeat;
+    margin-bottom: 1rem;
+    animation: pulse 1.5s infinite;
+  }
+  
+  @keyframes pulse {
+    0% { opacity: 0.6; transform: scale(0.95); }
+    50% { opacity: 1; transform: scale(1.05); }
+    100% { opacity: 0.6; transform: scale(0.95); }
+  }
+  
+  .error {
+    background: #fff5f5;
+    border-left: 4px solid #e53e3e;
+    padding: 1rem;
+    border-radius: 4px;
+    margin: 1rem 0;
+    color: #c53030;
+    text-align: center;
+  }
+  
+  .videos-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+    gap: 1.5rem;
+    margin-top: 1rem;
+  }
+  
+  .video-card {
+    background: white;
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    display: flex;
+    flex-direction: column;
+  }
+  
+  .video-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 10px 15px rgba(0, 0, 0, 0.1);
+  }
+  
+  .video-card h3 {
+    font-size: 1.1rem;
+    color: #2d3748;
+    margin: 1rem 1rem 0.5rem;
+    line-height: 1.4;
+    font-weight: 600;
+    padding: 0 1rem;
+  }
+  
+  .video-container {
+    position: relative;
+    padding-bottom: 56.25%; /* 16:9 aspect ratio */
+    height: 0;
+    overflow: hidden;
+    background: #f5f5f5;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  
+  .video-container::before {
+    content: '';
+    position: absolute;
+    width: 80px;
+    height: 80px;
+    background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path fill="%23FF4500" d="M12 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0zm5.01 4.74c.69 0 1.25.56 1.25 1.25a1.25 1.25 0 0 1-2.5 0 1.25 1.25 0 0 1 1.25-1.25zm-9.71 1.25c0-.69.56-1.25 1.25-1.25.69 0 1.25.56 1.25 1.25a1.25 1.25 0 0 1-2.5 0zM12 5.5c-3.11 0-5.75 1.89-6.66 4.51a6.79 6.79 0 0 1 3.07-4.27c.62-.36 1.3-.54 1.99-.54.68 0 1.37.18 1.99.54a6.79 6.79 0 0 1 3.07 4.27C17.75 7.39 15.11 5.5 12 5.5zm-6.13 7.4a6.79 6.79 0 0 1-1.37-4.9v-.03c.69.32 1.44.5 2.22.5.87 0 1.69-.25 2.38-.68.26.55.4 1.16.4 1.8 0 1.94-1.62 3.5-3.63 3.5-.5 0-.97-.1-1.4-.27v.01zm15.29-4.9c0 .69-.32 1.3-.82 1.71.48.37.82.98.82 1.71v.03a6.79 6.79 0 0 1-1.37 4.9c-.43-.17-.9-.27-1.4-.27-2.01 0-3.63-1.56-3.63-3.5 0-.64.14-1.25.4-1.8.69.43 1.51.68 2.38.68.78 0 1.53-.18 2.22-.5v-.03z"/></svg>');
+    background-size: contain;
+    background-repeat: no-repeat;
+    opacity: 0.2;
+    transition: opacity 0.3s ease;
+  }
+  
+  .video-card:hover .video-container::before {
+    opacity: 0.3;
+  }
+  
+  .reddit-embed {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    border: none;
+    background: #000;
+    transition: opacity 0.3s ease;
+  }
+  
+  .reddit-embed[src=""] {
+    opacity: 0;
+  }
+  
+  .view-post {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.75rem 1rem;
+    background: #f7fafc;
+    color: #ff4500; 
+    text-decoration: none;
+    font-weight: 500;
+    transition: all 0.2s ease;
+  }
+  
+  .view-post:hover {
+    background: #ffebe5;
+  }
+  
+  .view-post::before {
+    content: '';
+    display: inline-block;
+    width: 16px;
+    height: 16px;
+    background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path fill="%23FF4500" d="M12 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0zm5.01 4.74c.69 0 1.25.56 1.25 1.25a1.25 1.25 0 0 1-2.5 0 1.25 1.25 0 0 1 1.25-1.25zm-9.71 1.25c0-.69.56-1.25 1.25-1.25.69 0 1.25.56 1.25 1.25a1.25 1.25 0 0 1-2.5 0zM12 5.5c-3.11 0-5.75 1.89-6.66 4.51a6.79 6.79 0 0 1 3.07-4.27c.62-.36 1.3-.54 1.99-.54.68 0 1.37.18 1.99.54a6.79 6.79 0 0 1 3.07 4.27C17.75 7.39 15.11 5.5 12 5.5zm-6.13 7.4a6.79 6.79 0 0 1-1.37-4.9v-.03c.69.32 1.44.5 2.22.5.87 0 1.69-.25 2.38-.68.26.55.4 1.16.4 1.8 0 1.94-1.62 3.5-3.63 3.5-.5 0-.97-.1-1.4-.27v.01zm15.29-4.9c0 .69-.32 1.3-.82 1.71.48.37.82.98.82 1.71v.03a6.79 6.79 0 0 1-1.37 4.9c-.43-.17-.9-.27-1.4-.27-2.01 0-3.63-1.56-3.63-3.5 0-.64.14-1.25.4-1.8.69.43 1.51.68 2.38.68.78 0 1.53-.18 2.22-.5v-.03z"/></svg>');
+    background-size: contain;
+    margin-right: 8px;
+  }
+  
+  .no-videos {
+    text-align: center;
+    color: #718096;
+    padding: 2rem;
+    grid-column: 1 / -1;
+  }
+  
+  /* Responsive Adjustments */
+  @media (max-width: 768px) {
+    .videos-grid {
+      grid-template-columns: 1fr;
+    }
+    
+    .videos-section h2 {
+      font-size: 1.5rem;
+    }
+  }
