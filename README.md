@@ -1,6 +1,3 @@
-<<<<<<< HEAD
-# oarfin
-=======
 # Oarfin
 
 Oarfin is a Natural Disaster Alert and Management System.
@@ -28,4 +25,3 @@ The Server sits at the heart of communication of the above 3 parts. Not only it 
 
 ## Security Measures
 To secure the system, all APIs have error handling and CORS protection. The database in the server uses `sqllite3` which has inbuilt sql injection protection.
->>>>>>> c8e5cd36d60add68fb942b13c7243a98c3968775
